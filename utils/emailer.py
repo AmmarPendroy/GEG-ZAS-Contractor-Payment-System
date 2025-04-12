@@ -2,7 +2,7 @@ import smtplib
 from email.message import EmailMessage
 
 EMAIL_FROM = "your.email@geg-construction.com"
-EMAIL_PASSWORD = "your_app_password"  # Use app password or secure method
+EMAIL_PASSWORD = "your_app_password"
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 
