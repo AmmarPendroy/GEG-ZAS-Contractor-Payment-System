@@ -1,25 +1,35 @@
 import streamlit as st
-import sqlite3
 import pandas as pd
+from db import load_payments
 from auth import get_current_user
+from datetime import datetime
 
 user = get_current_user()
 if not user:
-    st.warning("Please login to view the dashboard.")
+    st.warning("Login required.")
     st.stop()
 
-st.title("📊 GEG-ZAS Payment Dashboard")
-st.header("GEG-ZAS Contractor Payment System")
+st.title("📊 Dashboard")
 
-conn = sqlite3.connect("database.db")
-df = pd.read_sql_query("SELECT * FROM payment_requests", conn)
-conn.close()
+payments = load_payments()
+df = pd.DataFrame(payments)
 
-st.subheader("Summary Table")
-summary = df.groupby(["contractor", "status"]).agg({"amount": "sum"}).unstack(fill_value=0)
-st.dataframe(summary)
+if df.empty:
+    st.info("No data yet.")
+else:
+    df["submitted_at"] = pd.to_datetime(df["submitted_at"])
+    df["week"] = df["submitted_at"].dt.strftime("%Y-W%U")
+    df["month"] = df["submitted_at"].dt.strftime("%B")
 
-st.subheader("Request Status Breakdown")
-st.metric("Pending", df[df["status"] == "Pending"].shape[0])
-st.metric("Approved", df[df["status"] == "Approved"].shape[0])
-st.metric("Rejected", df[df["status"] == "Rejected"].shape[0])
+    summary = df.groupby("contractor").agg({
+        "amount": ["sum"],
+        "week": lambda x: df.loc[x.index].groupby("week")["amount"].sum().max(),
+        "month": lambda x: df.loc[x.index].groupby("month")["amount"].sum().max()
+    })
+
+    st.dataframe(summary)
+
+    st.markdown("### Status Summary")
+    st.write(f"🕒 Pending: {len(df[df['status'] == 'Pending'])}")
+    st.write(f"✅ Approved: {len(df[df['status'] == 'Approve'])}")
+    st.write(f"❌ Rejected/Returned: {len(df[df['status'].isin(['Reject', 'Return'])])}")
