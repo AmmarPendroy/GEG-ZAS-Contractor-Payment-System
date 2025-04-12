@@ -1,44 +1,43 @@
 import streamlit as st
-import sqlite3
+from db import load_payments, save_payments
 from auth import get_current_user
-
-def fetch_requests():
-    conn = sqlite3.connect("database.db")
-    cur = conn.cursor()
-    cur.execute("SELECT id, contractor, description, amount, status, submitted_by FROM payment_requests WHERE status = 'Pending'")
-    rows = cur.fetchall()
-    conn.close()
-    return rows
-
-def update_request_status(request_id, status):
-    conn = sqlite3.connect("database.db")
-    cur = conn.cursor()
-    cur.execute("UPDATE payment_requests SET status = ? WHERE id = ?", (status, request_id))
-    conn.commit()
-    conn.close()
+from utils.emailer import send_email
 
 user = get_current_user()
-if not user or not user["role"].startswith("hq"):
-    st.warning("Only HQ users can access this page.")
+if not user or user["role"] not in ["hq_admin", "hq_director"]:
+    st.warning("Access restricted to HQ staff.")
     st.stop()
 
-st.title("📋 HQ Approval Page")
-st.header("GEG-ZAS Contractor Payment System")
+st.title("✅ Approve Contractor Payments")
 
-requests = fetch_requests()
+payments = load_payments()
+pending = [p for p in payments if p["status"] == "Pending"]
 
-if requests:
-    for req in requests:
-        with st.expander(f"{req[1]} | {req[2]} | ${req[3]}"):
-            st.write(f"**Submitted by**: {req[5]}")
-            col1, col2, _ = st.columns(3)
-            if col1.button("✅ Approve", key=f"approve_{req[0]}"):
-                update_request_status(req[0], "Approved")
-                st.success("Approved.")
-                st.rerun()
-            if col2.button("❌ Reject", key=f"reject_{req[0]}"):
-                update_request_status(req[0], "Rejected")
-                st.error("Rejected.")
-                st.rerun()
-else:
+if not pending:
     st.info("No pending requests.")
+else:
+    for i, payment in enumerate(pending):
+        with st.expander(f"{payment['contractor']} — ${payment['amount']} — {payment['description']}"):
+            st.markdown(f"- **Submitted by:** {payment['submitted_by']}")
+            st.markdown(f"- **Work Period:** {payment['work_period']}")
+            st.markdown(f"- **Submitted At:** {payment['submitted_at']}")
+            st.markdown("### Attachments:")
+            for path in payment["attachments"]:
+                st.markdown(f"- 📎 {path}")
+
+            decision = st.radio(
+                "Decision", ["Approve", "Reject", "Return"], key=f"decision_{i}"
+            )
+            comment = st.text_area("Comment (optional)", key=f"comment_{i}")
+
+            if st.button("Submit Decision", key=f"submit_{i}"):
+                payments[i]["status"] = decision
+                payments[i]["comment"] = comment
+                save_payments(payments)
+                send_email(
+                    to=payment["submitted_by"],
+                    subject=f"Payment {decision}",
+                    body=f"Your request for '{payment['description']}' has been {decision}.\n\nComment: {comment}"
+                )
+                st.success(f"Request marked as {decision}.")
+                st.rerun()
