@@ -1,5 +1,7 @@
 import streamlit as st
 from auth import get_current_user, get_all_users, approve_user, reject_user
+import pandas as pd
+import base64
 
 user = get_current_user()
 if not user or user["role"] != "hq_admin":
@@ -7,10 +9,8 @@ if not user or user["role"] != "hq_admin":
     st.stop()
 
 st.title("👥 User Approval Management")
-st.write("Approve or reject new user registrations.")
 
 users = get_all_users()
-
 pending_users = {k: v for k, v in users.items() if not v.get("approved", False)}
 
 if pending_users:
@@ -27,3 +27,11 @@ if pending_users:
                 st.rerun()
 else:
     st.info("No users pending approval.")
+
+# Export database
+st.markdown("---")
+df = pd.DataFrame.from_dict(users, orient='index').reset_index()
+df.columns = ['Email', 'Password', 'Role', 'Approved']
+csv = df.to_csv(index=False)
+b64 = base64.b64encode(csv.encode()).decode()
+st.markdown(f'<a href="data:file/csv;base64,{b64}" download="user_database.csv">Download CSV</a>', unsafe_allow_html=True)
