@@ -1,39 +1,40 @@
-import sqlite3
 import os
+import json
+from datetime import datetime
 
-DB_PATH = "database.db"
+DATA_FILE = "payments.json"
 
-def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS payment_requests (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            contractor TEXT,
-            description TEXT,
-            work_period TEXT,
-            amount REAL,
-            status TEXT,
-            submitted_by TEXT
-        )
-    """)
-    conn.commit()
-    conn.close()
+def load_payments():
+    if not os.path.exists(DATA_FILE):
+        return []
+    with open(DATA_FILE, "r") as f:
+        return json.load(f)
+
+def save_payments(payments):
+    with open(DATA_FILE, "w") as f:
+        json.dump(payments, f, indent=2)
 
 def submit_payment_request(contractor, description, work_period, amount, email, files):
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-    cur.execute("""
-        INSERT INTO payment_requests (contractor, description, work_period, amount, status, submitted_by)
-        VALUES (?, ?, ?, ?, ?, ?)
-    """, (contractor, description, work_period, amount, "Pending", email))
-    conn.commit()
-    conn.close()
+    payments = load_payments()
+    upload_dir = f"uploads/{email.replace('@', '_')}/"
+    os.makedirs(upload_dir, exist_ok=True)
 
-    # Save files locally
-    os.makedirs("uploads", exist_ok=True)
-    for f in files:
-        with open(f"uploads/{f.name}", "wb") as out:
-            out.write(f.read())
+    file_paths = []
+    for file in files:
+        filepath = os.path.join(upload_dir, file.name)
+        with open(filepath, "wb") as out:
+            out.write(file.read())
+        file_paths.append(filepath)
 
-init_db()
+    payments.append({
+        "contractor": contractor,
+        "description": description,
+        "work_period": work_period,
+        "amount": amount,
+        "submitted_by": email,
+        "attachments": file_paths,
+        "status": "Pending",
+        "submitted_at": datetime.now().isoformat()
+    })
+
+    save_payments(payments)
