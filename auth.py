@@ -7,6 +7,8 @@ from utils.emailer import send_email
 USER_DB_FILE = "user_db.json"
 SESSION_KEY = "current_user"
 
+HQ_ADMIN_EMAIL = "ammar.muhammed@geg-construction.com"  # Automatically approved
+
 # --- Helper functions ---
 
 def load_users():
@@ -47,7 +49,10 @@ def login():
             remember = st.checkbox("Remember me")
 
             if st.button("Login"):
-                if email not in users:
+                if email == HQ_ADMIN_EMAIL:
+                    st.session_state[SESSION_KEY] = {"email": email, "role": "hq_admin"}
+                    st.experimental_rerun()  # Skip further checks for HQ Admin
+                elif email not in users:
                     st.error("Email not found.")
                     return
                 user = users[email]
