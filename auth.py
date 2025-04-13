@@ -26,6 +26,7 @@ def logout_user():
         del st.session_state["user"]
 
 def register_user(email, password, role):
+    email = email.strip().lower()
     users = load_users()
     if email in users:
         return False, "User already exists."
@@ -38,6 +39,7 @@ def register_user(email, password, role):
     return True, "Registration successful. Awaiting approval."
 
 def login_user(email, password):
+    email = email.strip().lower()
     users = load_users()
     if email not in users:
         return False, "Email not found."
@@ -49,6 +51,7 @@ def login_user(email, password):
     return True, "Login successful."
 
 def change_password(email, old_password, new_password):
+    email = email.strip().lower()
     users = load_users()
     if email not in users:
         return False, "Email not found."
