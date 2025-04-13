@@ -13,7 +13,7 @@ if st.session_state.get("role") not in ["hq_admin", "hq_project_director"]:
 
 users = get_all_users()
 for email, info in users.items():
-    if not info.get("approved"):  # Only show unapproved users
+    if not info.get("approved"):
         with st.expander(f"{email}"):
             col1, col2 = st.columns(2)
             if col1.button("Approve", key=f"approve_{email}"):
