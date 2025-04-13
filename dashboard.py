@@ -9,9 +9,6 @@ from fpdf import FPDF
 from utils.sidebar import render_sidebar
 
 user = get_current_user()
-users = get_all_users()
-role = users.get(user, {}).get("role")
-
 if not user:
     st.warning("Login required.")
     st.stop()
@@ -19,73 +16,72 @@ if not user:
 render_sidebar()
 st.title("📊 Dashboard")
 
+# Get user's role from CSV
+users = get_all_users()
+user_data = next((u for u in users if u["email"] == user), None)
+role = user_data.get("role") if user_data else "unknown"
+
 payments = load_payments()
 df = pd.DataFrame(payments)
 
 if df.empty:
     st.info("No data yet.")
-    st.stop()
+else:
+    df["submitted_at"] = pd.to_datetime(df["submitted_at"])
+    df["week"] = df["submitted_at"].dt.strftime("%Y-W%U")
+    df["month"] = df["submitted_at"].dt.strftime("%B")
 
-# Restrict view to own submissions for site roles
-if role in ["zas_pm", "zas_accountant"]:
-    df = df[df["submitted_by"] == user]
+    # Role-based filtering (optional)
+    if role.startswith("zas_"):
+        df = df[df["submitted_by"] == user]
 
-# Add date-based insights
-df["submitted_at"] = pd.to_datetime(df["submitted_at"])
-df["week"] = df["submitted_at"].dt.strftime("%Y-W%U")
-df["month"] = df["submitted_at"].dt.strftime("%B")
+    summary = df.groupby("contractor").agg({
+        "amount": ["sum"],
+        "week": lambda x: df.loc[x.index].groupby("week")["amount"].sum().max(),
+        "month": lambda x: df.loc[x.index].groupby("month")["amount"].sum().max()
+    })
 
-# Summary stats
-summary = df.groupby("contractor").agg({
-    "amount": ["sum"],
-    "week": lambda x: df.loc[x.index].groupby("week")["amount"].sum().max(),
-    "month": lambda x: df.loc[x.index].groupby("month")["amount"].sum().max()
-})
+    st.dataframe(summary)
 
-st.subheader("💼 Contractor Summary")
-st.dataframe(summary)
+    st.markdown("### Status Summary")
+    st.write(f"🕒 Pending: {len(df[df['status'] == 'Pending'])}")
+    st.write(f"✅ Approved: {len(df[df['status'] == 'Approve'])}")
+    st.write(f"❌ Rejected/Returned: {len(df[df['status'].isin(['Reject', 'Return'])])}")
 
-# Status Summary
-st.subheader("📌 Status Summary")
-st.write(f"🕒 Pending: {len(df[df['status'] == 'Pending'])}")
-st.write(f"✅ Approved: {len(df[df['status'] == 'Approve'])}")
-st.write(f"❌ Rejected/Returned: {len(df[df['status'].isin(['Reject', 'Return'])])}")
+    st.markdown("---")
+    st.subheader("🧾 Export Reports")
 
-# Export Section
-st.markdown("---")
-st.subheader("🧾 Export Reports")
+    # Excel Export
+    excel_buffer = BytesIO()
+    df.to_excel(excel_buffer, index=False, sheet_name="Payments")
+    excel_data = excel_buffer.getvalue()
+    b64_excel = base64.b64encode(excel_data).decode()
+    st.markdown(f'<a href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64_excel}" download="payments.xlsx">📥 Download Excel Report</a>', unsafe_allow_html=True)
 
-# Export to Excel
-excel_buffer = BytesIO()
-df.to_excel(excel_buffer, index=False, sheet_name="Payments")
-excel_data = excel_buffer.getvalue()
-b64_excel = base64.b64encode(excel_data).decode()
-st.markdown(f'<a href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64_excel}" download="payments.xlsx">📥 Download Excel Report</a>', unsafe_allow_html=True)
+    # PDF Export
+    class PDF(FPDF):
+        def header(self):
+            self.set_font("Arial", "B", 12)
+            self.cell(0, 10, "Payment Summary Report", ln=True, align="C")
 
-# Export to PDF
-class PDF(FPDF):
-    def header(self):
-        self.set_font("Arial", "B", 12)
-        self.cell(0, 10, "Payment Summary Report", ln=True, align="C")
+        def chapter_title(self, title):
+            self.set_font("Arial", "B", 12)
+            self.cell(0, 10, title, ln=True)
 
-    def chapter_title(self, title):
-        self.set_font("Arial", "B", 12)
-        self.cell(0, 10, title, ln=True)
+        def chapter_body(self, text):
+            self.set_font("Arial", "", 10)
+            self.multi_cell(0, 10, text)
 
-    def chapter_body(self, text):
-        self.set_font("Arial", "", 10)
-        self.multi_cell(0, 10, text)
+    pdf = PDF()
+    pdf.add_page()
+    pdf.chapter_title("Submitted Payments")
 
-pdf = PDF()
-pdf.add_page()
-pdf.chapter_title("Submitted Payments")
+    for i, row in df.iterrows():
+        text = f"Contractor: {row['contractor']}\nAmount: ${row['amount']}\nStatus: {row['status']}\nDescription: {row['description']}\nWork Period: {row['work_period']}\nSubmitted By: {row['submitted_by']}\nDate: {row['submitted_at'].strftime('%Y-%m-%d')}\n"
+        pdf.chapter_body(text + "\n---------------------\n")
 
-for _, row in df.iterrows():
-    text = f"Contractor: {row['contractor']}\nAmount: ${row['amount']}\nStatus: {row['status']}\nDescription: {row['description']}\nWork Period: {row['work_period']}\nSubmitted By: {row['submitted_by']}\nDate: {row['submitted_at'].strftime('%Y-%m-%d')}\n"
-    pdf.chapter_body(text + "\n---------------------\n")
-
-pdf_buffer = BytesIO()
-pdf.output(pdf_buffer)
-pdf_data = pdf_buffer.getvalue()
-b64_pdf = base64.b64encode(pdf_data).decode()
-st.markdown(f'<a href="data:application/pdf;base64,{b64_pdf}" download="payments_report.pdf">📥 Download PDF Report</a>', unsafe_allow_html=True)
+    pdf_buffer = BytesIO()
+    pdf.output(pdf_buffer)
+    pdf_data = pdf_buffer.getvalue()
+    b64_pdf = base64.b64encode(pdf_data).decode()
+    st.markdown(f'<a href="data:application/pdf;base64,{b64_pdf}" download="payments_report.pdf">📥 Download PDF Report</a>', unsafe_allow_html=True)
