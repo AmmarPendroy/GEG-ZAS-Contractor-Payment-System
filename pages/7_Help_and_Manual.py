@@ -3,8 +3,11 @@ from auth import get_current_user
 from utils.sidebar import render_sidebar
 
 user = get_current_user()
-render_sidebar()
+if not user:
+    st.warning("Login required.")
+    st.stop()
 
+render_sidebar()
 st.title("📘 Help & User Manual")
 
 st.markdown("""
