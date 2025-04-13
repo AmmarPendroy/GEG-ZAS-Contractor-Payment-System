@@ -1,9 +1,12 @@
 import streamlit as st
 from auth import login_user, register_user, change_password, get_current_user
+from utils.sidebar import render_sidebar
 
 st.set_page_config(page_title="GEG-ZAS | Login", page_icon="🔐")
 
 def main():
+    render_sidebar()
+
     if "user" in st.session_state:
         st.switch_page("pages/1_Payment_Request.py")
 
