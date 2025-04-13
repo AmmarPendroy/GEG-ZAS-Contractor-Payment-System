@@ -3,10 +3,22 @@ from db import load_payments, save_payments
 from utils.emailer import send_email
 from datetime import datetime
 import os
+
 from github import Github
 
-# Load the GitHub token from Streamlit secrets
-GITHUB_TOKEN = st.secrets["github"]["token"]
+# Authenticate using the GitHub token from Streamlit secrets
+g = Github(st.secrets["github"]["token"])
+
+# Get the repository (replace with your actual username/repository)
+repo = g.get_repo("AmmarPendroy/GEG-ZAS-Contractor-Payment-System")
+
+# Example: Create a new issue related to approval
+def create_github_issue():
+    issue = repo.create_issue(
+        title="Payment Request Approval",
+        body="A payment request has been submitted and requires approval."
+    )
+    print(f"Issue created: {issue.title}")
 
 # Function to add dummy payment
 def add_dummy_payment():
