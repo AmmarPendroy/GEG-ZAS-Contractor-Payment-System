@@ -1,50 +1,35 @@
 import streamlit as st
-from auth import get_current_user
 from utils.sidebar import render_sidebar
 
-st.set_page_config(page_title="Help & Manual", page_icon="❓")
-
-user = get_current_user()
-if not user:
-    st.warning("🔒 Login required.")
-    st.stop()
-
 render_sidebar()
-st.title("📘 GEG-ZAS Help & Manual")
+st.title("📖 Help & Manual")
 
 st.markdown("""
-Welcome to the official user guide for the **GEG-ZAS Contractor Payment System**.
+### 📤 Submitting a Payment
+1. Go to **Payment Request** from the sidebar.
+2. Fill in the contractor name, amount, period, and description.
+3. Add attachments if required.
+4. Submit your request.
 
 ---
 
-### 📝 How to Submit a Payment Request
-- Go to **"Payment Request"** in the sidebar.
-- Fill in contractor name, amount, work period, description.
-- Upload required files (invoices, photos).
-- Click **"Submit"** — HQ will be notified.
-
----
-
-### ✅ Approving Requests (HQ only)
-- Open **"Approval Page"**.
-- View details and attachments.
-- Choose **Approve**, **Reject**, or **Return with comment**.
+### ✅ Approving Requests
+1. Go to **Approval Page**.
+2. Click to expand a request.
+3. Approve or Reject.
 
 ---
 
 ### 📊 Dashboard
-- Track payment trends by contractor or site.
-- Filter by status, date, user, or project.
-- Export Excel/PDF files.
+- See total payments, breakdowns by status and contractor.
+- Export data as Excel or PDF.
 
 ---
 
-### 👥 Manage Users (HQ Admin only)
-- Approve new registrations.
-- Change passwords.
-- Remove inactive accounts.
+### 🔔 Notifications
+- You will see toast notifications for new activity.
 
 ---
 
-If you face any issues, contact HQ IT team.
+For any questions, contact the GEG-ZAS System Admin.
 """)
