@@ -1,7 +1,7 @@
 import streamlit as st
 from utils.sidebar import render_sidebar
+from utils.taskbar import render_taskbar
 
-# 🔐 Hardcoded login credentials
 AUTHORIZED_USERS = {
     "Raad_Kakoni": {"password": "ABC", "role": "hq_project_director"},
     "Raman_Sherwani": {"password": "ABC", "role": "hq_admin"},
@@ -32,16 +32,14 @@ def main():
                 st.session_state.username = username
                 st.session_state.role = user["role"]
                 st.success(f"✅ Welcome, {username}!")
-                st.experimental_rerun()
+                st.rerun()
             else:
                 st.error("❌ Invalid credentials. Please try again.")
 
-        st.info("Only authorized roles can log in.")
-
     else:
         render_sidebar()
+        render_taskbar()
         st.title("🏗️ GEG-ZAS Contractor Payment System")
-        st.success(f"You're logged in as: {st.session_state.username} ({st.session_state.role})")
 
         st.markdown("""
         Use the sidebar to:
@@ -55,7 +53,7 @@ def main():
             st.session_state.logged_in = False
             st.session_state.username = None
             st.session_state.role = None
-            st.experimental_rerun()
+            st.rerun()
 
 if __name__ == "__main__":
     main()
