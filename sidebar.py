@@ -1,8 +1,12 @@
 import streamlit as st
+from auth import get_current_user, logout_user
 
 def show_sidebar():
-    with st.sidebar:
-        st.success(f"👤 Logged in as: {st.session_state['user']}")
-        if st.button("Logout"):
-            st.session_state.clear()
+    user = get_current_user()
+    if user:
+        st.sidebar.info(f"👤 Logged in as: **{user}**")
+        if st.sidebar.button("🔓 Logout"):
+            logout_user()
             st.rerun()
+    else:
+        st.sidebar.warning("Not logged in.")
