@@ -1,21 +1,25 @@
 import streamlit as st
-from auth import logout_user, get_current_user
+from utils.sidebar import render_sidebar
+
+st.set_page_config(page_title="Welcome | GEG-ZAS Payment System", layout="centered")
 
 def main():
-    st.set_page_config(page_title="GEG-ZAS Payment System", layout="wide")
-    st.title("🔓 GEG-ZAS Contractor Payment System")
-
+    render_sidebar()
+    st.image("static/geg_logo.png", use_container_width=True)
+    st.title("🏗️ Welcome to the GEG-ZAS Payment System")
     st.markdown("""
-        Welcome to the GEG-ZAS Payment Management System.
-        
-        Use the sidebar to navigate:
-        - 📤 Submit payment requests
-        - ✅ Approve pending requests (HQ only)
-        - 📊 View payment dashboards
-        - 👥 Manage users (HQ only)
-    """)
+    ---
+    This system helps streamline and monitor contractor payments across all GEG Construction sites, including ZAS.
 
-    st.info("Login is no longer required. All pages are accessible from the sidebar.")
+    **Use the sidebar to:**
+    - 📤 Submit or view payment requests
+    - ✅ Approve or reject requests (HQ only)
+    - 📊 Analyze dashboards and charts
+    - 📖 Get help and system guidance
+
+    ---
+    All users can now explore the system without logging in.
+    """)
 
 if __name__ == "__main__":
     main()
