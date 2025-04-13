@@ -25,14 +25,14 @@ def logout_user():
     if "user" in st.session_state:
         del st.session_state["user"]
 
-def register_user(email, password):
+def register_user(email, password, role):
     users = load_users()
     if email in users:
         return False, "User already exists."
     users[email] = {
         "password": hash_password(password),
         "approved": False,
-        "role": "user"
+        "role": role
     }
     save_users(users)
     return True, "Registration successful. Awaiting approval."
@@ -58,26 +58,39 @@ def change_password(email, old_password, new_password):
     save_users(users)
     return True, "Password updated successfully."
 
-# Additional Functions
-
 def get_all_users():
-    """Returns all users in the system"""
     return load_users()
 
 def approve_user(email):
-    """Approves a user by setting their 'approved' field to True"""
     users = load_users()
     if email not in users:
         return False, "User not found."
+
+    current_user = get_current_user()
+    if not current_user:
+        return False, "No logged-in user."
+
+    current_user_role = users.get(current_user, {}).get("role")
+    if current_user_role not in ["hq_admin", "hq_project_director"]:
+        return False, "Only HQ Admin and HQ Project Director can approve users."
+
     users[email]["approved"] = True
     save_users(users)
     return True, "User approved."
 
 def reject_user(email):
-    """Rejects a user by setting their 'approved' field to False"""
     users = load_users()
     if email not in users:
         return False, "User not found."
-    users[email]["approved"] = False
+
+    current_user = get_current_user()
+    if not current_user:
+        return False, "No logged-in user."
+
+    current_user_role = users.get(current_user, {}).get("role")
+    if current_user_role not in ["hq_admin", "hq_project_director"]:
+        return False, "Only HQ Admin and HQ Project Director can reject users."
+
+    del users[email]
     save_users(users)
     return True, "User rejected."
