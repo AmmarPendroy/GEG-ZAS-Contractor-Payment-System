@@ -1,7 +1,9 @@
 import streamlit as st
 from utils.sidebar import render_sidebar
+from utils.taskbar import render_taskbar
 
 render_sidebar()
+render_taskbar()
 st.title("📖 Help & Manual")
 
 st.markdown("""
@@ -27,9 +29,9 @@ st.markdown("""
 ---
 
 ### 🔔 Notifications
-- You will see toast notifications for new activity.
+- Toast alerts for submission and approval appear at the bottom.
 
 ---
 
-For any questions, contact the GEG-ZAS System Admin.
+For help contact: ammar.muhammed@geg-construction.com
 """)
