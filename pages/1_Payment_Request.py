@@ -1,10 +1,9 @@
 import streamlit as st
 from db import submit_payment_request
-from auth import get_current_user
+from auth import get_current_user, get_all_users
 from datetime import datetime
 from utils.sidebar import render_sidebar
-import os
-import shutil
+from utils.emailer import send_email, authenticate_gmail
 
 user = get_current_user()
 if not user:
@@ -12,7 +11,6 @@ if not user:
     st.stop()
 
 render_sidebar()
-
 st.title("📝 Payment Request")
 
 contractor = st.text_input("Contractor Name")
@@ -20,26 +18,8 @@ amount = st.number_input("Amount", min_value=0.0, format="%.2f")
 work_period = st.text_input("Work Period")
 description = st.text_area("Description")
 
-uploaded_files = st.file_uploader(
-    "Upload Supporting Documents (PDFs, images, etc.)",
-    type=["pdf", "png", "jpg", "jpeg", "docx", "xlsx"],
-    accept_multiple_files=True
-)
-
 if st.button("Submit Payment Request"):
     if contractor and amount and work_period:
-        # Save uploaded files
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-        folder_path = f"uploads/{user}/{timestamp}/"
-        os.makedirs(folder_path, exist_ok=True)
-        saved_files = []
-
-        for file in uploaded_files:
-            file_path = os.path.join(folder_path, file.name)
-            with open(file_path, "wb") as f:
-                shutil.copyfileobj(file, f)
-            saved_files.append(file_path)
-
         payment = {
             "contractor": contractor,
             "amount": amount,
@@ -47,12 +27,32 @@ if st.button("Submit Payment Request"):
             "submitted_by": user,
             "submitted_at": datetime.now().isoformat(),
             "description": description,
-            "attachments": saved_files,
             "status": "Pending",
-            "reviewed_by": "",
-            "comment": ""
+            "reviewed_by": ""
         }
         submit_payment_request(payment)
         st.success("Payment request submitted successfully!")
+
+        # 📧 Notify HQ roles
+        all_users = get_all_users()
+        hq_emails = [u["email"] for u in all_users if u["role"] in ["hq_admin", "hq_project_director"] and u["approved"].lower() == "true"]
+        email_service = authenticate_gmail()
+        for to_email in hq_emails:
+            subject = "📥 New Payment Submission"
+            body = f"""Hello,
+
+A new payment request has been submitted.
+
+Contractor: {contractor}
+Amount: ${amount}
+Submitted by: {user}
+
+Please review it on the approval page.
+
+Regards,
+GEG-ZAS Payment System
+"""
+            send_email(email_service, to_email, subject, body)
+
     else:
         st.error("Please fill all required fields.")
