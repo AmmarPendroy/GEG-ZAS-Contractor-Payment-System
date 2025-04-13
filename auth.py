@@ -71,8 +71,8 @@ def approve_user(email):
         return False, "No logged-in user."
 
     current_user_role = users.get(current_user, {}).get("role")
-    if current_user_role not in ["hq_admin", "hq_project_director"]:
-        return False, "Only HQ Admin and HQ Project Director can approve users."
+    if current_user_role not in ["hq_admin", "hq_project_director", "super_admin"]:
+        return False, "Only HQ Admin, Project Director, or Super Admin can approve users."
 
     users[email]["approved"] = True
     save_users(users)
@@ -88,8 +88,8 @@ def reject_user(email):
         return False, "No logged-in user."
 
     current_user_role = users.get(current_user, {}).get("role")
-    if current_user_role not in ["hq_admin", "hq_project_director"]:
-        return False, "Only HQ Admin and HQ Project Director can reject users."
+    if current_user_role not in ["hq_admin", "hq_project_director", "super_admin"]:
+        return False, "Only HQ Admin, Project Director, or Super Admin can reject users."
 
     del users[email]
     save_users(users)
