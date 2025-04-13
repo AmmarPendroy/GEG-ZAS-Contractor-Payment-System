@@ -2,56 +2,37 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from db import load_payments
-from auth import get_current_user, get_all_users
+from auth import get_current_user
 from utils.sidebar import render_sidebar
-from datetime import datetime
 
-# User must be logged in
+st.set_page_config(page_title="Site Charts", page_icon="🌍")
+
 user = get_current_user()
 if not user:
-    st.warning("Login required.")
+    st.warning("🔒 Login required.")
     st.stop()
 
 render_sidebar()
-st.title("🏗️ Site / Region Charts")
+st.title("🌍 Site-Based Payment Overview")
+st.caption("View and compare site payments by contractor or month")
 
-# Get current user's role
-users = get_all_users()
-user_data = next((u for u in users if u["email"] == user), None)
-role = user_data["role"] if user_data else "unknown"
-
-# Restrict access to HQ roles only
-if role not in ["hq_admin", "hq_project_director", "super_admin"]:
-    st.warning("Access denied. Only HQ roles can view this page.")
-    st.stop()
-
-# Load payment data
-payments = load_payments()
-df = pd.DataFrame(payments)
-
+df = pd.DataFrame(load_payments())
 if df.empty:
-    st.info("No payment records found.")
+    st.info("No payment data available.")
     st.stop()
 
-# Convert date field
-df["submitted_at"] = pd.to_datetime(df["submitted_at"])
-df["month"] = df["submitted_at"].dt.strftime("%Y-%m")
+# Derive site/project from email (e.g., zas_project_manager → ZAS Site)
+df["site"] = df["submitted_by"].apply(lambda x: x.split("@")[0].split(".")[0].upper())
+df["month"] = pd.to_datetime(df["submitted_at"]).dt.strftime("%B %Y")
 
-# Use email prefix as 'site' name
-df["site"] = df["submitted_by"].str.split("@").str[0]
-
-# Chart 1: Total amount per site
-st.subheader("💰 Total Payment Requests by Site")
-site_totals = df.groupby("site")["amount"].sum().reset_index()
-fig1 = px.bar(site_totals, x="site", y="amount", title="Total Requested by Site", labels={"amount": "Amount ($)"})
+# Chart 1: Total per site
+st.subheader("🏗️ Total Payment Requests by Site")
+site_chart = df.groupby("site")["amount"].sum().reset_index()
+fig1 = px.bar(site_chart, x="site", y="amount", title="Payments by Site", text_auto=".2s")
 st.plotly_chart(fig1, use_container_width=True)
 
-# Chart 2: Monthly payment trends per site
-st.subheader("📅 Monthly Trend by Site")
-monthly = df.groupby(["month", "site"])["amount"].sum().reset_index()
-fig2 = px.line(monthly, x="month", y="amount", color="site", markers=True, title="Monthly Trends")
+# Chart 2: Site activity by month
+st.subheader("📆 Site Submission Activity by Month")
+monthly_chart = df.groupby(["site", "month"])["amount"].sum().reset_index()
+fig2 = px.line(monthly_chart, x="month", y="amount", color="site", markers=True, title="Monthly Activity")
 st.plotly_chart(fig2, use_container_width=True)
-
-# Raw data table
-st.subheader("📋 Raw Payment Data by Site")
-st.dataframe(df[["site", "contractor", "amount", "status", "submitted_at"]])
