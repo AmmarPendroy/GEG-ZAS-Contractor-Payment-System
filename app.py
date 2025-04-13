@@ -9,6 +9,7 @@ def main():
 
     tab1, tab2, tab3 = st.tabs(["Login", "Register", "Change Password"])
 
+    # Login Tab
     with tab1:
         email = st.text_input("Email", key="login_email")
         password = st.text_input("Password", type="password", key="login_pass")
@@ -20,9 +21,11 @@ def main():
             else:
                 st.error(msg)
 
+    # Register Tab
     with tab2:
         new_email = st.text_input("Email", key="register_email")
         new_pass = st.text_input("Password", type="password", key="register_pass")
+
         role = st.selectbox("Select your role", [
             "hq_project_director",
             "hq_admin",
@@ -38,6 +41,7 @@ def main():
             else:
                 st.error(msg)
 
+    # Change Password Tab
     with tab3:
         email_cp = st.text_input("Your Email", key="cp_email")
         old_pass = st.text_input("Old Password", type="password", key="cp_old")
