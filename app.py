@@ -1,18 +1,21 @@
 import streamlit as st
-from auth import login, get_current_user, logout
+from utils.emailer import send_email
+from pages import approval_page, dashboard_page
+from auth import get_current_user
 
-st.set_page_config(page_title="GEG-ZAS Contractor Payment System", layout="wide")
-
-login()
-
+# Ensure the user is logged in
 user = get_current_user()
-
-if user:
-    st.sidebar.success(f"Logged in as: {user['email']} ({user['role']})")
-    if st.sidebar.button("Logout"):
-        logout()
-
-    st.title("🏗️ GEG-ZAS Contractor Payment System")
-    st.markdown("Welcome to the contractor payment tracking and approval platform.")
-else:
+if not user:
+    st.warning("Login required.")
     st.stop()
+
+# App title and selection
+st.title("GEG-ZAS Contractor Payment System")
+
+# Sidebar with navigation options
+page = st.sidebar.radio("Select a page", ["Dashboard", "Approval Page"])
+
+if page == "Dashboard":
+    dashboard_page.dashboard()
+elif page == "Approval Page":
+    approval_page.approval_page()
