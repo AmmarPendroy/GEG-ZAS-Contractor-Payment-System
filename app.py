@@ -7,17 +7,38 @@ st.set_page_config(page_title="GEG-ZAS | Login", page_icon="🔐")
 def main():
     render_sidebar()
 
-    if "user" in st.session_state:
-        st.switch_page("pages/1_Payment_Request.py")
+    # Theme toggle (stored in session)
+    if "theme" not in st.session_state:
+        st.session_state.theme = "light"
 
-    st.title("🔐 GEG-ZAS Contractor Payment Portal")
-    st.caption("Secure access for project teams and HQ.")
+    theme_toggle = st.sidebar.radio("🌓 Theme", ["light", "dark"], index=0 if st.session_state.theme == "light" else 1)
+    st.session_state.theme = theme_toggle
+
+    # Welcome screen if not logged in
+    if "user" not in st.session_state:
+        st.image("static/geg_logo.png", width=180)
+        st.title("🏗️ Welcome to GEG-ZAS Contractor Portal")
+        st.markdown("""
+        This portal is for **ZAS project teams** and **GEG HQ staff** to manage contractor payments.
+
+        - 📝 Submit & track payment requests  
+        - ✅ HQ approval system  
+        - 📊 Dashboard insights  
+        - 📁 Secure document uploads  
+        """)
+
+        st.markdown("---")
+        if st.button("🔐 Continue to Login/Register"):
+            st.session_state.show_login = True
+        elif "show_login" not in st.session_state:
+            return
+
+    st.title("🔐 Login / Register")
 
     tab1, tab2, tab3 = st.tabs(["🔓 Login", "📝 Register", "🔁 Change Password"])
 
     # === LOGIN TAB ===
     with tab1:
-        st.subheader("🔓 Login to Your Account")
         email = st.text_input("📧 Email", key="login_email").strip().lower()
         password = st.text_input("🔑 Password", type="password", key="login_pass")
         if st.button("Login"):
@@ -30,7 +51,6 @@ def main():
 
     # === REGISTER TAB ===
     with tab2:
-        st.subheader("📝 Create a New Account")
         new_email = st.text_input("📧 Email", key="register_email").strip().lower()
         new_pass = st.text_input("🔐 Password", type="password", key="register_pass")
 
@@ -40,7 +60,7 @@ def main():
             "hq_admin",
             "hq_accountant",
             "hq_project_director"
-        ], index=0)
+        ])
 
         if st.button("Register"):
             success, msg = register_user(new_email, new_pass, role)
@@ -51,7 +71,6 @@ def main():
 
     # === PASSWORD RESET TAB ===
     with tab3:
-        st.subheader("🔁 Reset Your Password")
         email = st.text_input("📧 Email", key="reset_email").strip().lower()
         old_pass = st.text_input("🔑 Current Password", type="password", key="reset_old")
         new_pass = st.text_input("🆕 New Password", type="password", key="reset_new")
