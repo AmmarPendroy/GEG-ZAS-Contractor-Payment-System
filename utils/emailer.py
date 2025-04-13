@@ -19,4 +19,4 @@ You can optionally leave a comment and confirm your decision.
 Regards,
 GEG-ZAS System
 """
-    send_email(service, "ammar.muhammed@geg.com", subject, body)
+    send_email(service, "ammar.muhammed@geg-construction.com", subject, body)
