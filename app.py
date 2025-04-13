@@ -23,8 +23,16 @@ def main():
     with tab2:
         new_email = st.text_input("Email", key="register_email")
         new_pass = st.text_input("Password", type="password", key="register_pass")
+        role = st.selectbox("Select your role", [
+            "hq_project_director",
+            "hq_admin",
+            "hq_accountant",
+            "zas_pm",
+            "zas_accountant"
+        ], key="register_role")
+
         if st.button("Register"):
-            success, msg = register_user(new_email, new_pass)
+            success, msg = register_user(new_email, new_pass, role)
             if success:
                 st.success(msg)
             else:
