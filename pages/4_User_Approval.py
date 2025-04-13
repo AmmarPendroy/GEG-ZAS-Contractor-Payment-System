@@ -1,3 +1,9 @@
+from auth import get_current_user, get_all_users, approve_user, reject_user
+import streamlit as st
+
+# Your existing code for handling user approval/rejection...
+
+
 import streamlit as st
 from auth import get_current_user, get_all_users, approve_user, reject_user
 from utils.sidebar import render_sidebar
