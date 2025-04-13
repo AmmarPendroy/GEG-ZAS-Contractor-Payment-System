@@ -38,9 +38,6 @@ def register_user(email, password, role):
     save_users(users)
     return True, "Registration successful. Awaiting approval."
 
-print("Input hash:", hash_password(password))
-print("Expected hash:", users[email]["password"])
-
 def login_user(email, password):
     email = email.strip().lower()
     users = load_users()
@@ -48,8 +45,16 @@ def login_user(email, password):
         return False, "Email not found."
     if not users[email].get("approved", False):
         return False, "Account not approved yet."
-    if users[email]["password"] != hash_password(password):
+
+    # 🔍 Debug print lines
+    input_hash = hash_password(password)
+    expected_hash = users[email]["password"]
+    print("DEBUG - Input hash:   ", input_hash)
+    print("DEBUG - Stored hash:  ", expected_hash)
+
+    if expected_hash != input_hash:
         return False, "Incorrect password."
+
     st.session_state["user"] = email
     return True, "Login successful."
 
