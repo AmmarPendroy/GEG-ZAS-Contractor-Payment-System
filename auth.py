@@ -1,131 +1,52 @@
 import csv
-import hashlib
-import os
 import bcrypt
-import streamlit as st
 
-USERS_FILE = "user_db.csv"
+USER_CSV = "user_db.csv"
 
-# ======================
-# Password Hashing
-# ======================
-def hash_password(password):
-    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+def load_users():
+    users = []
+    try:
+        with open(USER_CSV, "r") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                users.append(row)
+    except FileNotFoundError:
+        pass
+    return users
 
-def verify_password(plain_password, hashed_password):
-    return bcrypt.checkpw(plain_password.encode(), hashed_password.encode())
+def get_all_users():
+    return load_users()
 
-# ======================
-# User Session Management
-# ======================
 def get_current_user():
+    import streamlit as st
     return st.session_state.get("user")
 
 def logout_user():
+    import streamlit as st
     if "user" in st.session_state:
         del st.session_state["user"]
 
-# ======================
-# CSV Load/Save Helpers
-# ======================
-def get_all_users():
-    try:
-        with open(USERS_FILE, newline="", encoding="utf-8") as f:
-            return list(csv.DictReader(f))
-    except FileNotFoundError:
-        return []
-
-def save_all_users(users):
-    with open(USERS_FILE, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=["email", "password", "role", "approved"])
-        writer.writeheader()
-        writer.writerows(users)
-
-# ======================
-# Core Auth Functions
-# ======================
-def register_user(email, password, role="user"):
-    email = email.strip().lower()
-    users = get_all_users()
-
-    for u in users:
-        if u["email"] == email:
-            return False, "User already exists."
-
-    hashed = hash_password(password)
-    users.append({
-        "email": email,
-        "password": hashed,
-        "role": role,
-        "approved": "False"
-    })
-
-    save_all_users(users)
-    return True, "Registration successful. Awaiting approval."
+def verify_password(plain_password, hashed_password):
+    if not hashed_password or not isinstance(hashed_password, str):
+        return False
+    return bcrypt.checkpw(plain_password.encode(), hashed_password.encode())
 
 def login_user(email, password):
+    import streamlit as st
     email = email.strip().lower()
-    users = get_all_users()
-
+    users = load_users()
     for row in users:
-        if row["email"] == email:
-            if row["approved"].lower() != "true":
-                return False, "Account not approved yet."
-
-            # ✅ DEBUG PRINTS FOR TROUBLESHOOTING
+        if row["email"].strip().lower() == email:
             print(">> Trying login:", email)
             print(">> Input password:", password)
             print(">> Stored hash:", row["password"])
-            print(">> Match?", verify_password(password, row["password"]))
-
-            if verify_password(password, row["password"]):
-                st.session_state["user"] = email
+            match = verify_password(password, row["password"])
+            print(">> Match?", match)
+            if not row.get("approved", "").lower() == "true":
+                return False, "Account not approved yet."
+            if match:
+                st.session_state["user"] = row["email"]
                 return True, "Login successful."
             else:
                 return False, "Incorrect password."
-
     return False, "Email not found."
-
-def change_password(email, old_password, new_password):
-    email = email.strip().lower()
-    users = get_all_users()
-    updated = False
-
-    for row in users:
-        if row["email"] == email:
-            if not verify_password(old_password, row["password"]):
-                return False, "Old password is incorrect."
-            row["password"] = hash_password(new_password)
-            updated = True
-            break
-
-    if updated:
-        save_all_users(users)
-        return True, "Password changed successfully."
-    return False, "User not found."
-
-# ======================
-# Admin Actions
-# ======================
-def approve_user(email):
-    email = email.strip().lower()
-    users = get_all_users()
-    found = False
-    for row in users:
-        if row["email"] == email:
-            row["approved"] = "True"
-            found = True
-            break
-    if found:
-        save_all_users(users)
-        return True, "User approved."
-    return False, "User not found."
-
-def reject_user(email):
-    email = email.strip().lower()
-    users = get_all_users()
-    filtered = [u for u in users if u["email"] != email]
-    if len(filtered) == len(users):
-        return False, "User not found."
-    save_all_users(filtered)
-    return True, "User rejected/deleted."
