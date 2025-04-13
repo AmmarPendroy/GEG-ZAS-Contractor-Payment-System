@@ -23,5 +23,10 @@
     "password": "hashed_password_here",
     "role": "HQ Admin",
     "approved": true
+  },
+  "hq_accountant@example.com": {
+    "password": "hashed_password_here",
+    "role": "HQ Accountant",
+    "approved": false
   }
 }
