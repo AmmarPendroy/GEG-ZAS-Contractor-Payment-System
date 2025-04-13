@@ -43,3 +43,5 @@ def render_sidebar():
         if st.sidebar.button("🚪 Logout"):
             logout_user()
             st.rerun()
+
+st.sidebar.page_link("pages/8_Notifications.py", label="🔔 Notifications")
