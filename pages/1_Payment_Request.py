@@ -20,7 +20,11 @@ amount = st.number_input("Amount", min_value=0.0, format="%.2f")
 work_period = st.text_input("Work Period")
 description = st.text_area("Description")
 
-uploaded_files = st.file_uploader("Upload Supporting Documents (PDFs, images, etc.)", type=["pdf", "png", "jpg", "jpeg", "docx", "xlsx"], accept_multiple_files=True)
+uploaded_files = st.file_uploader(
+    "Upload Supporting Documents (PDFs, images, etc.)",
+    type=["pdf", "png", "jpg", "jpeg", "docx", "xlsx"],
+    accept_multiple_files=True
+)
 
 if st.button("Submit Payment Request"):
     if contractor and amount and work_period:
