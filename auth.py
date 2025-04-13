@@ -38,6 +38,9 @@ def register_user(email, password, role):
     save_users(users)
     return True, "Registration successful. Awaiting approval."
 
+print("Input hash:", hash_password(password))
+print("Expected hash:", users[email]["password"])
+
 def login_user(email, password):
     email = email.strip().lower()
     users = load_users()
