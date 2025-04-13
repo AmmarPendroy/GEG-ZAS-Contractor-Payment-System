@@ -12,6 +12,7 @@ if not user:
     st.stop()
 
 render_sidebar()
+
 st.title("📝 Submit a Payment Request")
 st.caption("For ZAS Site Project Teams")
 
@@ -20,10 +21,9 @@ with st.form("payment_form"):
     amount = st.number_input("💵 Amount (USD)", min_value=0.0, step=100.0, format="%.2f")
     work_period = st.text_input("🗓️ Work Period", placeholder="e.g. 2025-04-01 to 2025-04-15")
     description = st.text_area("📝 Description of Work")
+    attachments = st.file_uploader("📎 Upload Documents", accept_multiple_files=True)
 
-    attachments = st.file_uploader("📎 Upload Documents (PDF, Images)", accept_multiple_files=True)
-
-    submitted = st.form_submit_button("📤 Submit Payment Request")
+    submitted = st.form_submit_button("📤 Submit Request")
 
 if submitted:
     if contractor and amount > 0 and work_period:
@@ -41,8 +41,6 @@ if submitted:
         }
         submit_payment_request(payment)
 
-        st.success("✅ Payment request submitted successfully.")
-        if attachments:
-            st.info(f"📁 Uploaded: {', '.join(files_info)}")
+        st.toast("📤 Payment submitted successfully!", icon="✅")
     else:
-        st.error("⚠️ Please fill in all required fields.")
+        st.error("⚠️ Please complete all required fields.")
