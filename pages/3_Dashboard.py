@@ -6,8 +6,10 @@ from io import BytesIO
 import base64
 from fpdf import FPDF
 from utils.sidebar import render_sidebar
+from utils.taskbar import render_taskbar
 
 render_sidebar()
+render_taskbar()
 st.title("📊 Dashboard")
 
 payments = load_payments()
@@ -36,14 +38,12 @@ else:
     st.markdown("---")
     st.subheader("🧾 Export Reports")
 
-    # Excel Export
     excel_buffer = BytesIO()
     df.to_excel(excel_buffer, index=False, sheet_name="Payments")
     excel_data = excel_buffer.getvalue()
     b64_excel = base64.b64encode(excel_data).decode()
     st.markdown(f'<a href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64_excel}" download="payments.xlsx">📥 Download Excel Report</a>', unsafe_allow_html=True)
 
-    # PDF Export
     class PDF(FPDF):
         def header(self):
             self.set_font("Arial", "B", 12)
