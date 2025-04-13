@@ -1,50 +1,37 @@
 import streamlit as st
-from sidebar import show_sidebar
+from db import load_payments, save_payments
+from auth import get_current_user
+from utils.sidebar import render_sidebar
 
-if "user" not in st.session_state:
-    st.error("Please log in to access this page.")
+user = get_current_user()
+if not user:
+    st.warning("Login required.")
     st.stop()
 
-show_sidebar()
+render_sidebar()
+st.title("✅ Approval Page")
 
+payments = load_payments()
+pending = [p for p in payments if p["status"] == "Pending"]
 
-
-import streamlit as st
-from db import load_payments, save_payments
-from utils.emailer import send_email, create_github_issue
-from datetime import datetime
-
-# Simulate payment approval process
-def approve_payment(payment_id):
-    # Load payments
-    payments = load_payments()
-    
-    # Find the payment by ID and update its status
-    for payment in payments:
-        if payment["id"] == payment_id:
-            payment["status"] = "Approved"
-            payment["reviewed_by"] = "ammar.muhammed@geg-construction.com"
-            payment["reviewed_at"] = datetime.now().isoformat()
-            break
-
-    # Save the updated payments
-    save_payments(payments)
-
-    # Send email notification
-    send_email(payment["submitted_by"], "Payment Approved", f"Your payment of ${payment['amount']} has been approved.")
-
-    # Create GitHub issue for tracking
-    create_github_issue()
-
-    st.success(f"Payment {payment_id} has been approved successfully!")
-
-# Streamlit UI for approval
-st.title("Payment Approval Page")
-
-payment_id = st.text_input("Enter Payment ID to approve:")
-
-if st.button("Approve Payment"):
-    if payment_id:
-        approve_payment(payment_id)
-    else:
-        st.warning("Please provide a valid Payment ID.")
+if not pending:
+    st.info("No pending payments.")
+else:
+    for i, p in enumerate(pending):
+        with st.expander(f"{p['contractor']} - ${p['amount']}"):
+            st.write(f"Submitted by: {p['submitted_by']}")
+            st.write(f"Work Period: {p['work_period']}")
+            st.write(f"Description: {p['description']}")
+            col1, col2 = st.columns(2)
+            if col1.button("Approve", key=f"a_{i}"):
+                p["status"] = "Approve"
+                p["reviewed_by"] = user
+                save_payments(payments)
+                st.success("Approved.")
+                st.experimental_rerun()
+            if col2.button("Reject", key=f"r_{i}"):
+                p["status"] = "Reject"
+                p["reviewed_by"] = user
+                save_payments(payments)
+                st.error("Rejected.")
+                st.experimental_rerun()
