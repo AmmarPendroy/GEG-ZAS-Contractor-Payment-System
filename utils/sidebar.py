@@ -4,11 +4,6 @@ from auth import get_current_user, logout_user
 def render_sidebar():
     st.sidebar.markdown("""
         <style>
-            .sidebar-title {
-                font-size: 20px;
-                font-weight: bold;
-                margin-bottom: 10px;
-            }
             .sidebar-logo {
                 width: 100%;
                 margin-bottom: 10px;
@@ -27,10 +22,10 @@ def render_sidebar():
         </style>
     """, unsafe_allow_html=True)
 
-    # 🔷 Logo at the top
+    # ✅ Logo
     st.sidebar.image("static/geg_logo.png", use_column_width=True, caption="GEG Construction")
 
-    # 🔹 Page Navigation
+    # Navigation
     st.sidebar.markdown("### 📂 Navigation")
     st.sidebar.page_link("app.py", label="🏠 Home")
     st.sidebar.page_link("pages/1_Payment_Request.py", label="📝 Payment Request")
@@ -41,7 +36,6 @@ def render_sidebar():
     st.sidebar.page_link("pages/6_Site_Charts.py", label="🌍 Site Charts")
     st.sidebar.page_link("pages/7_Help_and_Manual.py", label="❓ Help / Manual")
 
-    # 🔐 Show current user
     user = get_current_user()
     if user:
         st.sidebar.markdown(f"---\n👤 Logged in as: `{user}`")
