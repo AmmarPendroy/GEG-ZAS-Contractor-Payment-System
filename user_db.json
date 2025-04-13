@@ -18,5 +18,10 @@
     "password": "hashed_password_here",
     "role": "ZAS Accountant",
     "approved": false
+  },
+  "ammar.muhammed@geg-construction.com": {
+    "password": "hashed_password_here",
+    "role": "HQ Admin",
+    "approved": true
   }
 }
