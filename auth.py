@@ -72,6 +72,12 @@ def login_user(email, password):
             if row["approved"].lower() != "true":
                 return False, "Account not approved yet."
 
+            # ✅ DEBUG PRINTS FOR TROUBLESHOOTING
+            print(">> Trying login:", email)
+            print(">> Input password:", password)
+            print(">> Stored hash:", row["password"])
+            print(">> Match?", verify_password(password, row["password"]))
+
             if verify_password(password, row["password"]):
                 st.session_state["user"] = email
                 return True, "Login successful."
