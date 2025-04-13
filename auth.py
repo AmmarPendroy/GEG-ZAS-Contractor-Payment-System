@@ -1,6 +1,7 @@
 import json
 import streamlit as st
 import hashlib
+from utils.emailer import send_login_alert
 
 USERS_FILE = "user_db.json"
 
@@ -22,7 +23,9 @@ def get_current_user():
     return st.session_state.get("user")
 
 def logout_user():
-    if "user" in st.session_state:
+    user = get_current_user()
+    if user:
+        send_login_alert(user, success=False)
         del st.session_state["user"]
 
 def register_user(email, password, role):
@@ -40,38 +43,23 @@ def register_user(email, password, role):
 
 def login_user(email, password):
     email = email.strip().lower()
-    print("[DEBUG] Login requested for:", email)
-
     users = load_users()
 
-    if not isinstance(users, dict):
-        print("[DEBUG] User database is not a dict!")
-        return False, "Internal error: user DB malformed."
-
     if email not in users:
-        print("[DEBUG] Email not found in users.")
         return False, "Email not found."
 
-    user = users[email]
-    if not user.get("approved", False):
-        print("[DEBUG] User not approved.")
+    if not users[email].get("approved", False):
         return False, "Account not approved yet."
 
     input_hash = hash_password(password)
-    expected_hash = user["password"]
-
-    print("[DEBUG] Input hash:   ", input_hash)
-    print("[DEBUG] Stored hash:  ", expected_hash)
+    expected_hash = users[email]["password"]
 
     if input_hash != expected_hash:
-        print("[DEBUG] Password hash mismatch.")
         return False, "Incorrect password."
 
     st.session_state["user"] = email
-    print("[DEBUG] Login successful for:", email)
+    send_login_alert(email, success=True)
     return True, "Login successful."
-
-
 
 def change_password(email, old_password, new_password):
     email = email.strip().lower()
