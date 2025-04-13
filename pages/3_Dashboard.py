@@ -26,22 +26,22 @@ if df.empty:
     st.info("No data yet.")
     st.stop()
 
-# Show in-app notification (last update for the current user)
+# Show latest notification
 user_updates = df[(df["submitted_by"] == user) & (df["status"] != "Pending")]
 if not user_updates.empty:
     latest = user_updates.sort_values(by="submitted_at", ascending=False).iloc[0]
     status = latest["status"]
-    reviewed_by = latest.get("reviewed_by", "")
+    reviewer = latest.get("reviewed_by", "")
     comment = latest.get("comment", "")
-    st.info(f"🔔 Your recent request was **{status.upper()}** by {reviewed_by}.")
+    st.info(f"🔔 Your recent request was **{status.upper()}** by `{reviewer}`.")
     if status == "Return" and comment:
         st.warning(f"💬 Comment from reviewer: *{comment}*")
 
-# Restrict view to own submissions for ZAS roles
+# Restrict ZAS roles to their own data
 if role in ["zas_pm", "zas_accountant"]:
     df = df[df["submitted_by"] == user]
 
-# Convert and enrich dates
+# Process datetime
 df["submitted_at"] = pd.to_datetime(df["submitted_at"])
 df["week"] = df["submitted_at"].dt.strftime("%Y-W%U")
 df["month"] = df["submitted_at"].dt.strftime("%B")
@@ -56,22 +56,25 @@ summary = df.groupby("contractor").agg({
 st.subheader("💼 Contractor Summary")
 st.dataframe(summary)
 
-# Status counts
+# Status breakdown
 st.subheader("📌 Status Summary")
 st.write(f"🕒 Pending: {len(df[df['status'] == 'Pending'])}")
 st.write(f"✅ Approved: {len(df[df['status'] == 'Approve'])}")
 st.write(f"❌ Rejected/Returned: {len(df[df['status'].isin(['Reject', 'Return'])])}")
 
-# Export section
+# Export
 st.markdown("---")
 st.subheader("🧾 Export Reports")
 
 excel_buffer = BytesIO()
 df.to_excel(excel_buffer, index=False, sheet_name="Payments")
-excel_data = excel_buffer.getvalue()
-b64_excel = base64.b64encode(excel_data).decode()
-st.markdown(f'<a href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64_excel}" download="payments.xlsx">📥 Download Excel Report</a>', unsafe_allow_html=True)
+b64_excel = base64.b64encode(excel_buffer.getvalue()).decode()
+st.markdown(
+    f'<a href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64_excel}" download="payments.xlsx">📥 Download Excel Report</a>',
+    unsafe_allow_html=True
+)
 
+# PDF Export
 class PDF(FPDF):
     def header(self):
         self.set_font("Arial", "B", 12)
@@ -97,4 +100,7 @@ pdf_buffer = BytesIO()
 pdf.output(pdf_buffer)
 pdf_data = pdf_buffer.getvalue()
 b64_pdf = base64.b64encode(pdf_data).decode()
-st.markdown(f'<a href="data:application/pdf;base64,{b64_pdf}" download="payments_report.pdf">📥 Download PDF Report</a>', unsafe_allow_html=True)
+st.markdown(
+    f'<a href="data:application/pdf;base64,{b64_pdf}" download="payments_report.pdf">📥 Download PDF Report</a>',
+    unsafe_allow_html=True
+)
