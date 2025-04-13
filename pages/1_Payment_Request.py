@@ -1,3 +1,14 @@
+import streamlit as st
+from sidebar import show_sidebar
+
+if "user" not in st.session_state:
+    st.error("Please log in to access this page.")
+    st.stop()
+
+show_sidebar()
+
+
+
 # 1_Payment_Request.py
 import streamlit as st
 from db import submit_payment_request
