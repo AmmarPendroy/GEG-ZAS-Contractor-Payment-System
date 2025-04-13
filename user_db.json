@@ -14,8 +14,9 @@
     "approved": false,
     "role": "hq_accountant"
   },
-"ammar.muhammed@geg-construction.com": {
-  "password": "12c0166a6cc2bb15b7a1fd15ed065e0f9025fd0c17991f1f00e1a3349d2c3e6e",
-  "approved": true,
-  "role": "super_admin"
+  "ammar.muhammed@geg-construction.com": {
+    "password": "12c0166a6cc2bb15b7a1fd15ed065e0f9025fd0c17991f1f00e1a3349d2c3e6e",
+    "approved": true,
+    "role": "super_admin"
+  }
 }
