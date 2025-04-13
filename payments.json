@@ -1,11 +1,11 @@
 [
     {
-        "contractor": "Contractor 1",
-        "amount": 1500.00,
-        "work_period": "2025-02-01 to 2025-02-15",
+        "contractor": "Test Contractor",
+        "amount": 1000,
+        "work_period": "2025-05-01 to 2025-05-15",
         "submitted_by": "user@example.com",
-        "submitted_at": "2025-02-15T00:00:00",
-        "description": "Payment for February work",
+        "submitted_at": "2025-04-10T15:30:00",
+        "description": "Payment for services rendered",
         "status": "Pending",
         "reviewed_by": ""
     }
