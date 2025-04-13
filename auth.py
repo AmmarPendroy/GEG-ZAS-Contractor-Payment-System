@@ -40,31 +40,37 @@ def register_user(email, password, role):
 
 def login_user(email, password):
     email = email.strip().lower()
+    print("[DEBUG] Login requested for:", email)
+
     users = load_users()
 
-    print("[DEBUG] login_user called for:", email)
+    if not isinstance(users, dict):
+        print("[DEBUG] User database is not a dict!")
+        return False, "Internal error: user DB malformed."
 
     if email not in users:
-        print("[DEBUG] Email not found in database.")
+        print("[DEBUG] Email not found in users.")
         return False, "Email not found."
 
-    if not users[email].get("approved", False):
-        print("[DEBUG] User exists but is not approved.")
+    user = users[email]
+    if not user.get("approved", False):
+        print("[DEBUG] User not approved.")
         return False, "Account not approved yet."
 
     input_hash = hash_password(password)
-    expected_hash = users[email]["password"]
+    expected_hash = user["password"]
 
     print("[DEBUG] Input hash:   ", input_hash)
     print("[DEBUG] Stored hash:  ", expected_hash)
 
-    if expected_hash != input_hash:
-        print("[DEBUG] Hash mismatch.")
+    if input_hash != expected_hash:
+        print("[DEBUG] Password hash mismatch.")
         return False, "Incorrect password."
 
     st.session_state["user"] = email
-    print("[DEBUG] Login successful.")
+    print("[DEBUG] Login successful for:", email)
     return True, "Login successful."
+
 
 
 def change_password(email, old_password, new_password):
