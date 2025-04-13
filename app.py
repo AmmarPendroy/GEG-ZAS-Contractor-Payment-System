@@ -27,7 +27,7 @@ def main():
         new_pass = st.text_input("Password", type="password", key="register_pass")
 
         role = st.selectbox("Select your role", [
-            "hq_project_director",
+            "HQ - Project Director",
             "hq_admin",
             "hq_accountant",
             "zas_pm",
