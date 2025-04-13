@@ -1,24 +1,12 @@
 [
     {
-        "contractor": "Contractor A",
-        "amount": 5000.00,
-        "work_period": "2025-02-01 to 2025-02-28",
-        "submitted_by": "contractorA@example.com",
-        "submitted_at": "2025-04-10T12:34:56",
-        "description": "Payment for completed work in February",
+        "contractor": "Contractor 1",
+        "amount": 1500.00,
+        "work_period": "2025-02-01 to 2025-02-15",
+        "submitted_by": "user@example.com",
+        "submitted_at": "2025-02-15T00:00:00",
+        "description": "Payment for February work",
         "status": "Pending",
-        "reviewed_by": "",
-        "reviewed_at": ""
-    },
-    {
-        "contractor": "Contractor B",
-        "amount": 12000.50,
-        "work_period": "2025-03-01 to 2025-03-31",
-        "submitted_by": "contractorB@example.com",
-        "submitted_at": "2025-04-08T09:20:15",
-        "description": "Payment for completed work in March",
-        "status": "Pending",
-        "reviewed_by": "",
-        "reviewed_at": ""
+        "reviewed_by": ""
     }
 ]
