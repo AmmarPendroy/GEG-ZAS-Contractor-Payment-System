@@ -1,14 +1,14 @@
-import json
-
-def load_payments():
-    """Load payments from a JSON file"""
-    try:
-        with open('payments.json', 'r') as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return []
-
-def save_payments(payments):
-    """Save payments to a JSON file"""
-    with open('payments.json', 'w') as f:
-        json.dump(payments, f, indent=4)
+[
+    {
+        "id": 1,
+        "contractor": "Test Contractor Inc.",
+        "amount": 1250.75,
+        "work_period": "2025-03-01 to 2025-03-15",
+        "submitted_by": "ammar.muhammed@geg-construction.com",
+        "submitted_at": "2025-04-01T12:00:00",
+        "description": "Test payment for development",
+        "status": "Pending",
+        "reviewed_by": "",
+        "reviewed_at": ""
+    }
+]
