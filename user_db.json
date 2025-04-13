@@ -1,32 +1,22 @@
 {
   "user@example.com": {
     "password": "hashed_password_here",
-    "role": "HQ Project Director",
+    "role": "hq_accountant",
     "approved": true
   },
   "admin@example.com": {
     "password": "hashed_password_here",
-    "role": "HQ Admin",
+    "role": "hq_project_director",
     "approved": true
-  },
-  "zas_pm@example.com": {
-    "password": "hashed_password_here",
-    "role": "ZAS Project Manager",
-    "approved": false
-  },
-  "zas_accountant@example.com": {
-    "password": "hashed_password_here",
-    "role": "ZAS Accountant",
-    "approved": false
   },
   "ammar.muhammed@geg-construction.com": {
     "password": "hashed_password_here",
-    "role": "HQ Admin",
+    "role": "hq_admin",
     "approved": true
   },
   "hq_accountant@example.com": {
     "password": "hashed_password_here",
-    "role": "HQ Accountant",
+    "role": "hq_accountant",
     "approved": false
   }
 }
