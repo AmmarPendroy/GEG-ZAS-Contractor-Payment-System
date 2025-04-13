@@ -1,65 +1,91 @@
 import streamlit as st
-import json
 import pandas as pd
-import plotly.express as px
-from utils.sidebar import load_sidebar
+from db import load_payments
+from auth import get_current_user, get_all_users
+from datetime import datetime
+from io import BytesIO
+import base64
+from fpdf import FPDF
+from utils.sidebar import render_sidebar
 
-# Load sidebar
-load_sidebar()
+user = get_current_user()
+users = get_all_users()
+role = users.get(user, {}).get("role")
 
-st.title("📊 Contractor Payment Dashboard")
-
-# Load payment data
-def load_data():
-    try:
-        with open("payments.json", "r") as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return []
-
-payments = load_data()
-df = pd.DataFrame(payments)
-
-# Check if there's any data
-if df.empty:
-    st.info("No payment records found.")
+if not user:
+    st.warning("Login required.")
     st.stop()
 
-# Convert status to lowercase for consistency
-df["status"] = df["status"].str.lower()
+render_sidebar()
+st.title("📊 Dashboard")
 
-# Filter section
-with st.sidebar:
-    st.header("🔍 Filters")
-    contractors = sorted(df["contractor"].unique())
-    selected_contractor = st.selectbox("Select Contractor", ["All"] + contractors)
+payments = load_payments()
+df = pd.DataFrame(payments)
 
-    status_filter = st.multiselect("Filter by Status", options=df["status"].unique(), default=df["status"].unique())
+if df.empty:
+    st.info("No data yet.")
+    st.stop()
 
-# Apply filters
-filtered_df = df.copy()
+# Restrict view to own submissions for site roles
+if role in ["zas_pm", "zas_accountant"]:
+    df = df[df["submitted_by"] == user]
 
-if selected_contractor != "All":
-    filtered_df = filtered_df[filtered_df["contractor"] == selected_contractor]
-
-if status_filter:
-    filtered_df = filtered_df[filtered_df["status"].isin(status_filter)]
+# Add date-based insights
+df["submitted_at"] = pd.to_datetime(df["submitted_at"])
+df["week"] = df["submitted_at"].dt.strftime("%Y-W%U")
+df["month"] = df["submitted_at"].dt.strftime("%B")
 
 # Summary stats
-st.subheader("📌 Summary")
-col1, col2, col3 = st.columns(3)
-col1.metric("Total Requests", len(filtered_df))
-col2.metric("Approved", (df["status"] == "approved").sum())
-col3.metric("Pending", (df["status"] == "pending").sum())
+summary = df.groupby("contractor").agg({
+    "amount": ["sum"],
+    "week": lambda x: df.loc[x.index].groupby("week")["amount"].sum().max(),
+    "month": lambda x: df.loc[x.index].groupby("month")["amount"].sum().max()
+})
 
-# Chart
-st.subheader("📈 Payment Status Distribution")
-status_counts = filtered_df["status"].value_counts().reset_index()
-status_counts.columns = ["Status", "Count"]
+st.subheader("💼 Contractor Summary")
+st.dataframe(summary)
 
-fig = px.pie(status_counts, names="Status", values="Count", title="Status Breakdown", hole=0.4)
-st.plotly_chart(fig, use_container_width=True)
+# Status Summary
+st.subheader("📌 Status Summary")
+st.write(f"🕒 Pending: {len(df[df['status'] == 'Pending'])}")
+st.write(f"✅ Approved: {len(df[df['status'] == 'Approve'])}")
+st.write(f"❌ Rejected/Returned: {len(df[df['status'].isin(['Reject', 'Return'])])}")
 
-# Raw data
-st.subheader("📋 Payment Records")
-st.dataframe(filtered_df, use_container_width=True)
+# Export Section
+st.markdown("---")
+st.subheader("🧾 Export Reports")
+
+# Export to Excel
+excel_buffer = BytesIO()
+df.to_excel(excel_buffer, index=False, sheet_name="Payments")
+excel_data = excel_buffer.getvalue()
+b64_excel = base64.b64encode(excel_data).decode()
+st.markdown(f'<a href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64_excel}" download="payments.xlsx">📥 Download Excel Report</a>', unsafe_allow_html=True)
+
+# Export to PDF
+class PDF(FPDF):
+    def header(self):
+        self.set_font("Arial", "B", 12)
+        self.cell(0, 10, "Payment Summary Report", ln=True, align="C")
+
+    def chapter_title(self, title):
+        self.set_font("Arial", "B", 12)
+        self.cell(0, 10, title, ln=True)
+
+    def chapter_body(self, text):
+        self.set_font("Arial", "", 10)
+        self.multi_cell(0, 10, text)
+
+pdf = PDF()
+pdf.add_page()
+pdf.chapter_title("Submitted Payments")
+
+for _, row in df.iterrows():
+    text = f"Contractor: {row['contractor']}\nAmount: ${row['amount']}\nStatus: {row['status']}\nDescription: {row['description']}\nWork Period: {row['work_period']}\nSubmitted By: {row['submitted_by']}\nDate: {row['submitted_at'].strftime('%Y-%m-%d')}\n"
+    pdf.chapter_body(text + "\n---------------------\n")
+
+pdf_buffer = BytesIO()
+pdf.output(pdf_buffer)
+pdf_data = pdf_buffer.getvalue()
+b64_pdf = base64.b64encode(pdf_data).decode()
+st.markdown(f'<a href="data:application/pdf;base64,{b64_pdf}" download="payments_report.pdf">📥 Download PDF Report</a>', unsafe_allow_html=True)
