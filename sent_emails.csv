@@ -1,0 +1,25 @@
+timestamp,to_email,subject,body,status
+2025-04-10T13:00:00,contractorA@example.com,Payment Request Approved,"Hello,
+
+This is to inform you that the payment request for:
+
+Contractor: Contractor A
+Amount: $5000
+Status: Approved
+
+has been processed.
+
+Regards,
+GEG-ZAS System",Sent
+2025-04-10T13:05:00,contractorB@example.com,Payment Request Rejected,"Hello,
+
+This is to inform you that the payment request for:
+
+Contractor: Contractor B
+Amount: $12000.50
+Status: Rejected
+
+has been processed.
+
+Regards,
+GEG-ZAS System",Failed
