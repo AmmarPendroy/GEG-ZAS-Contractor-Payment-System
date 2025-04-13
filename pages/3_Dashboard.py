@@ -8,6 +8,28 @@ import base64
 from fpdf import FPDF
 import plotly.express as px
 from utils.sidebar import render_sidebar
+import os
+
+# Function to log exports
+def log_export(user, role, filetype, contractor_filter, date_range):
+    log_file = "export_logs.csv"
+    timestamp = datetime.utcnow().isoformat()
+    entry = {
+        "timestamp": timestamp,
+        "user": user,
+        "role": role,
+        "file_type": filetype,
+        "contractor_filter": contractor_filter,
+        "date_range": f"{date_range[0]} to {date_range[1]}" if len(date_range) == 2 else ""
+    }
+
+    try:
+        df = pd.read_csv(log_file)
+    except FileNotFoundError:
+        df = pd.DataFrame(columns=["timestamp", "user", "role", "file_type", "contractor_filter", "date_range"])
+
+    df = pd.concat([df, pd.DataFrame([entry])], ignore_index=True)
+    df.to_csv(log_file, index=False)
 
 # Auth check
 user = get_current_user()
@@ -35,11 +57,10 @@ df["submitted_at"] = pd.to_datetime(df["submitted_at"])
 df["month"] = df["submitted_at"].dt.strftime("%Y-%m")
 df["week"] = df["submitted_at"].dt.strftime("%Y-W%U")
 
-# Site PM/Accountant restriction
 if role.startswith("zas_"):
     df = df[df["submitted_by"] == user]
 
-# 🔍 Sidebar filters
+# Sidebar filters
 st.sidebar.subheader("🔎 Filter Payments")
 contractors = sorted(df["contractor"].unique())
 selected_contractor = st.sidebar.selectbox("Contractor", ["All"] + contractors)
@@ -81,11 +102,13 @@ st.dataframe(summary)
 
 # Export
 st.markdown("### 🧾 Export Filtered Reports")
+
 excel_buffer = BytesIO()
 df.to_excel(excel_buffer, index=False)
 excel_data = excel_buffer.getvalue()
 b64_excel = base64.b64encode(excel_data).decode()
 st.markdown(f'<a href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64_excel}" download="payments.xlsx">📥 Download Excel</a>', unsafe_allow_html=True)
+log_export(user, role, "Excel", selected_contractor, date_range)
 
 class PDF(FPDF):
     def header(self):
@@ -116,3 +139,4 @@ pdf.output(pdf_buffer)
 pdf_data = pdf_buffer.getvalue()
 b64_pdf = base64.b64encode(pdf_data).decode()
 st.markdown(f'<a href="data:application/pdf;base64,{b64_pdf}" download="payments.pdf">📥 Download PDF</a>', unsafe_allow_html=True)
+log_export(user, role, "PDF", selected_contractor, date_range)
