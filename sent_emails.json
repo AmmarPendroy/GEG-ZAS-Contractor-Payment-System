@@ -1,0 +1,16 @@
+[
+    {
+        "to": "contractorA@example.com",
+        "subject": "Payment Request Approved",
+        "body": "Hello,\n\nThis is to inform you that the payment request for:\n\nContractor: Contractor A\nAmount: $5000\nStatus: Approved\n\nhas been processed.\n\nRegards,\nGEG-ZAS System",
+        "status": "Sent",
+        "timestamp": "2025-04-10T13:00:00"
+    },
+    {
+        "to": "contractorB@example.com",
+        "subject": "Payment Request Rejected",
+        "body": "Hello,\n\nThis is to inform you that the payment request for:\n\nContractor: Contractor B\nAmount: $12000.50\nStatus: Rejected\n\nhas been processed.\n\nRegards,\nGEG-ZAS System",
+        "status": "Failed",
+        "timestamp": "2025-04-10T13:05:00"
+    }
+]
