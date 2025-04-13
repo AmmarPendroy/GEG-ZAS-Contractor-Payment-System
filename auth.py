@@ -111,3 +111,19 @@ def login():
     # Restore session from "Remember me"
     if "remembered_user" in st.session_state and SESSION_KEY not in st.session_state:
         st.session_state[SESSION_KEY] = st.session_state["remembered_user"]
+
+def get_all_users():
+    return load_users()
+
+def approve_user(email):
+    users = load_users()
+    if email in users:
+        users[email]["approved"] = True
+        save_users(users)
+
+def reject_user(email):
+    users = load_users()
+    if email in users:
+        del users[email]
+        save_users(users)
+
