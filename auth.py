@@ -1,6 +1,6 @@
 import json
 import streamlit as st
-import hashlib
+import bcrypt
 from utils.emailer import send_login_alert
 
 USERS_FILE = "user_db.json"
@@ -17,7 +17,10 @@ def save_users(users):
         json.dump(users, f, indent=2)
 
 def hash_password(password):
-    return hashlib.sha256(password.encode()).hexdigest()
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+def verify_password(plain_password, hashed_password):
+    return bcrypt.checkpw(plain_password.encode(), hashed_password.encode())
 
 def get_current_user():
     return st.session_state.get("user")
@@ -51,10 +54,7 @@ def login_user(email, password):
     if not users[email].get("approved", False):
         return False, "Account not approved yet."
 
-    input_hash = hash_password(password)
-    expected_hash = users[email]["password"]
-
-    if input_hash != expected_hash:
+    if not verify_password(password, users[email]["password"]):
         return False, "Incorrect password."
 
     st.session_state["user"] = email
@@ -66,7 +66,7 @@ def change_password(email, old_password, new_password):
     users = load_users()
     if email not in users:
         return False, "Email not found."
-    if users[email]["password"] != hash_password(old_password):
+    if not verify_password(old_password, users[email]["password"]):
         return False, "Old password incorrect."
     users[email]["password"] = hash_password(new_password)
     save_users(users)
