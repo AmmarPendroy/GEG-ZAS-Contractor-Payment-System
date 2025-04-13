@@ -1,23 +1,34 @@
+# 1_Payment_Request.py
 import streamlit as st
-from auth import get_current_user
 from db import submit_payment_request
+from datetime import datetime
 
-user = get_current_user()
-if not user:
-    st.warning("Please login first.")
-    st.stop()
+# Form for submitting a payment request
+st.title("Submit Payment Request")
 
-st.title("💵 Submit Payment Request")
+contractor = st.text_input("Contractor Name")
+amount = st.number_input("Amount", min_value=0.0)
+work_period = st.text_input("Work Period")
+description = st.text_area("Description")
+submitted_by = st.text_input("Your Email")
 
-with st.form("payment_form"):
-    contractor = st.text_input("Contractor Name")
-    description = st.text_area("Work Description")
-    work_period = st.text_input("Work Period")
-    amount = st.number_input("Amount Requested", min_value=0.0)
-    attachments = st.file_uploader("Upload Supporting Documents", accept_multiple_files=True)
+if st.button("Submit Payment Request"):
+    if contractor and amount and work_period and description and submitted_by:
+        payment_data = {
+            "contractor": contractor,
+            "amount": amount,
+            "work_period": work_period,
+            "submitted_by": submitted_by,
+            "submitted_at": datetime.now().isoformat(),
+            "description": description,
+            "status": "Pending",
+            "reviewed_by": ""
+        }
 
-    submitted = st.form_submit_button("Submit Request")
-
-    if submitted:
-        submit_payment_request(contractor, description, work_period, amount, user["email"], attachments)
-        st.success("Request submitted successfully!")
+        # Submit the payment request
+        if submit_payment_request(payment_data):
+            st.success("Payment request submitted successfully!")
+        else:
+            st.error("Error submitting payment request.")
+    else:
+        st.error("Please fill out all the fields.")
