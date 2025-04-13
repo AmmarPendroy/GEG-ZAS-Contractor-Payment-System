@@ -1,12 +1,22 @@
 {
   "user@example.com": {
     "password": "hashed_password_here",
-    "approved": true,
-    "role": "user"
+    "role": "HQ Project Director",
+    "approved": true
   },
   "admin@example.com": {
     "password": "hashed_password_here",
-    "approved": true,
-    "role": "admin"
+    "role": "HQ Admin",
+    "approved": true
+  },
+  "zas_pm@example.com": {
+    "password": "hashed_password_here",
+    "role": "ZAS Project Manager",
+    "approved": false
+  },
+  "zas_accountant@example.com": {
+    "password": "hashed_password_here",
+    "role": "ZAS Accountant",
+    "approved": false
   }
 }
