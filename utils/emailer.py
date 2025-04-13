@@ -8,12 +8,9 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-import streamlit as st
+from github import Github
 
-# Load the GitHub token from Streamlit secrets
-GITHUB_TOKEN = st.secrets["github"]["token"]
-
-# Gmail API authentication
+# If modifying the email service scope, delete the file token.json.
 SCOPES = ['https://www.googleapis.com/auth/gmail.send']
 
 def authenticate_gmail():
@@ -59,27 +56,18 @@ def send_email(service, to, subject, body):
     except HttpError as error:
         print(f'An error occurred: {error}')
 
-def use_github_token():
-    """Demonstration of using GitHub token"""
-    print(f"GitHub Token: {GITHUB_TOKEN}")
-    # You can use this token in your GitHub API calls for authorization (like pushing updates, etc.)
-    # Example: Making a request to GitHub API using the token
+# GitHub interaction (e.g., creating issues)
+def create_github_issue():
+    # Authenticate with your GitHub token
+    g = Github(os.environ['GITHUB_TOKEN'])
 
-if __name__ == '__main__':
-    try:
-        # Authenticate and get Gmail service
-        service = authenticate_gmail()
+    # Get the repository
+    repo = g.get_repo("AmmarPendroy/GEG-ZAS-Contractor-Payment-System")  # Replace with your username/repository
 
-        # Email details
-        to = 'recipient@example.com'
-        subject = 'Test Email'
-        body = 'This is a test email sent using Gmail API with OAuth 2.0 authentication.'
+    # Create an issue
+    issue = repo.create_issue(
+        title="New Payment Request",
+        body="A new payment request has been submitted and needs approval."
+    )
 
-        # Send the email
-        send_email(service, to, subject, body)
-
-        # Use GitHub token for GitHub-related operations
-        use_github_token()
-
-    except Exception as e:
-        print(f"An error occurred: {e}")
+    print(f"Issue created: {issue.title}")
