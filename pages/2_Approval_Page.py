@@ -2,6 +2,7 @@ import streamlit as st
 from db import load_payments, save_payments
 from auth import get_current_user, get_all_users
 from utils.sidebar import render_sidebar
+import os
 
 user = get_current_user()
 if not user:
@@ -26,33 +27,38 @@ if not pending:
 else:
     for i, p in enumerate(pending):
         with st.expander(f"{p['contractor']} - ${p['amount']}"):
-            st.write(f"Submitted by: {p['submitted_by']}")
-            st.write(f"Work Period: {p['work_period']}")
-            st.write(f"Description: {p['description']}")
-            if "attachments" in p:
+            st.write(f"🧾 Submitted by: `{p['submitted_by']}`")
+            st.write(f"📆 Work Period: {p['work_period']}")
+            st.write(f"📝 Description: {p['description']}")
+
+            # Show file attachments
+            if "attachments" in p and p["attachments"]:
+                st.markdown("📎 **Attachments:**")
                 for f in p["attachments"]:
-                    st.markdown(f"[📎 {os.path.basename(f)}](/{f})", unsafe_allow_html=True)
+                    st.markdown(f"- [{os.path.basename(f)}](/{f})", unsafe_allow_html=True)
 
             col1, col2, col3 = st.columns(3)
 
-            if col1.button("Approve", key=f"a_{i}"):
+            if col1.button("✅ Approve", key=f"a_{i}"):
                 p["status"] = "Approve"
                 p["reviewed_by"] = user
+                p["comment"] = ""
                 save_payments(payments)
                 st.success("Approved.")
                 st.experimental_rerun()
 
-            if col2.button("Reject", key=f"r_{i}"):
+            if col2.button("❌ Reject", key=f"r_{i}"):
                 p["status"] = "Reject"
                 p["reviewed_by"] = user
+                p["comment"] = ""
                 save_payments(payments)
                 st.error("Rejected.")
                 st.experimental_rerun()
 
             with col3:
                 with st.form(key=f"return_form_{i}"):
-                    comment = st.text_area("Return with comment")
-                    submit_return = st.form_submit_button("Return")
+                    comment = st.text_area("💬 Return with Comment")
+                    submit_return = st.form_submit_button("↩️ Return")
                     if submit_return:
                         p["status"] = "Return"
                         p["reviewed_by"] = user
