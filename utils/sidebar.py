@@ -1,5 +1,13 @@
 import streamlit as st
 from auth import get_current_user, logout_user
+from db import load_payments
+
+def get_unread_notification_count(user):
+    try:
+        data = load_payments()
+        return sum(1 for p in data if p["submitted_by"] == user and p["status"] in ["Approved", "Rejected", "Returned"])
+    except:
+        return 0
 
 def render_sidebar():
     st.sidebar.markdown("""
@@ -22,10 +30,8 @@ def render_sidebar():
         </style>
     """, unsafe_allow_html=True)
 
-    # ✅ Logo (fixed)
     st.sidebar.image("static/geg_logo.png", use_container_width=True, caption="GEG Construction")
 
-    # 🔹 Navigation
     st.sidebar.markdown("### 📂 Navigation")
     st.sidebar.page_link("app.py", label="🏠 Home")
     st.sidebar.page_link("pages/1_Payment_Request.py", label="📝 Payment Request")
@@ -36,12 +42,14 @@ def render_sidebar():
     st.sidebar.page_link("pages/6_Site_Charts.py", label="🌍 Site Charts")
     st.sidebar.page_link("pages/7_Help_and_Manual.py", label="❓ Help / Manual")
 
-    # 👤 User session + logout
     user = get_current_user()
     if user:
+        # 🔔 Notification badge
+        unread_count = get_unread_notification_count(user)
+        notif_label = f"🔔 Notifications {'🔴 '+str(unread_count) if unread_count > 0 else ''}"
+        st.sidebar.page_link("pages/8_Notifications.py", label=notif_label)
+
         st.sidebar.markdown(f"---\n👤 Logged in as: `{user}`")
         if st.sidebar.button("🚪 Logout"):
             logout_user()
             st.rerun()
-
-st.sidebar.page_link("pages/8_Notifications.py", label="🔔 Notifications")
