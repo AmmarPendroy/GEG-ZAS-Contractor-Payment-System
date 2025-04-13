@@ -1,10 +1,10 @@
 import os
 import base64
+import json
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
@@ -24,6 +24,25 @@ def authenticate_gmail():
         with open('token.json', 'w') as token:
             token.write(creds.to_json())
     return build('gmail', 'v1', credentials=creds)
+
+def log_email_history(to_email, subject, body, status):
+    email_history = []
+    if os.path.exists('sent_emails.json'):
+        with open('sent_emails.json', 'r') as f:
+            email_history = json.load(f)
+    
+    email_entry = {
+        "to": to_email,
+        "subject": subject,
+        "body": body,
+        "status": status,
+        "timestamp": datetime.now().isoformat()
+    }
+    
+    email_history.append(email_entry)
+    
+    with open('sent_emails.json', 'w') as f:
+        json.dump(email_history, f, indent=4)
 
 def send_approval_email(to_email, contractor, amount, status):
     try:
@@ -49,6 +68,11 @@ GEG-ZAS System
 
         raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
         send_message = service.users().messages().send(userId='me', body={'raw': raw}).execute()
+        
+        # Log the email in the history
+        log_email_history(to_email, subject, body, "Sent")
+
         print(f'✅ Email sent: {send_message["id"]}')
     except HttpError as error:
         print(f"❌ Gmail API error: {error}")
+        log_email_history(to_email, subject, body, "Failed")
