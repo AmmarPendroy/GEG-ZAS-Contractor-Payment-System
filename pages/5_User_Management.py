@@ -2,13 +2,12 @@ import streamlit as st
 import pandas as pd
 import csv
 from utils.sidebar import render_sidebar
+from utils.taskbar import render_taskbar
 
 render_sidebar()
+render_taskbar()
 st.title("🛠 User Management")
 
-st.info("This page is read-only for now since login-based admin control is disabled.")
-
-# Load user data from CSV
 USER_CSV = "user_db.csv"
 
 try:
