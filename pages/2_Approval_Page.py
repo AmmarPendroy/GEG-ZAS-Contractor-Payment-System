@@ -1,4 +1,15 @@
 import streamlit as st
+from sidebar import show_sidebar
+
+if "user" not in st.session_state:
+    st.error("Please log in to access this page.")
+    st.stop()
+
+show_sidebar()
+
+
+
+import streamlit as st
 from db import load_payments, save_payments
 from utils.emailer import send_email, create_github_issue
 from datetime import datetime
