@@ -1,84 +1,72 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
 from db import load_payments
-from auth import get_current_user, get_all_users
 from datetime import datetime
 from io import BytesIO
 import base64
 from fpdf import FPDF
 from utils.sidebar import render_sidebar
 
-st.set_page_config(page_title="Dashboard", page_icon="📊")
-
-user = get_current_user()
-if not user:
-    st.warning("🔒 Login required.")
-    st.stop()
-
 render_sidebar()
-st.title("📊 Payment Dashboard")
+st.title("📊 Dashboard")
 
-# Load data
-df = pd.DataFrame(load_payments())
-users = {u["email"]: u for u in get_all_users()}
-role = users.get(user, {}).get("role", "")
+payments = load_payments()
+df = pd.DataFrame(payments)
 
 if df.empty:
-    st.info("No payment data available.")
-    st.stop()
+    st.info("No data yet.")
+else:
+    df["submitted_at"] = pd.to_datetime(df["submitted_at"])
+    df["week"] = df["submitted_at"].dt.strftime("%Y-W%U")
+    df["month"] = df["submitted_at"].dt.strftime("%B")
 
-df["submitted_at"] = pd.to_datetime(df["submitted_at"])
-df["month"] = df["submitted_at"].dt.strftime("%B %Y")
+    summary = df.groupby("contractor").agg({
+        "amount": ["sum"],
+        "week": lambda x: df.loc[x.index].groupby("week")["amount"].sum().max(),
+        "month": lambda x: df.loc[x.index].groupby("month")["amount"].sum().max()
+    })
 
-# Filter for non-admins
-if not role.startswith("hq_") and not role == "super_admin":
-    df = df[df["submitted_by"] == user]
+    st.dataframe(summary)
 
-# Sidebar filters
-with st.sidebar:
-    st.header("🔍 Filters")
-    contractor = st.selectbox("🏗️ Contractor", ["All"] + sorted(df["contractor"].unique()))
-    status_filter = st.multiselect("📌 Status", options=df["status"].unique(), default=df["status"].unique())
-    date_range = st.date_input("📅 Submission Range", [])
+    st.markdown("### Status Summary")
+    st.write(f"🕒 Pending: {len(df[df['status'] == 'Pending'])}")
+    st.write(f"✅ Approved: {len(df[df['status'] == 'Approve'])}")
+    st.write(f"❌ Rejected/Returned: {len(df[df['status'].isin(['Reject', 'Return'])])}")
 
-if contractor != "All":
-    df = df[df["contractor"] == contractor]
-if status_filter:
-    df = df[df["status"].isin(status_filter)]
-if len(date_range) == 2:
-    start, end = pd.to_datetime(date_range)
-    df = df[(df["submitted_at"] >= start) & (df["submitted_at"] <= end)]
-
-# Metrics
-st.subheader("📌 Summary")
-col1, col2, col3 = st.columns(3)
-col1.metric("Total Requests", len(df))
-col2.metric("Approved", len(df[df["status"] == "Approved"]))
-col3.metric("Pending", len(df[df["status"] == "Pending"]))
-
-# Chart
-st.subheader("📈 Payment Status Breakdown")
-chart_data = df["status"].value_counts().reset_index()
-chart_data.columns = ["Status", "Count"]
-fig = px.pie(chart_data, names="Status", values="Count", hole=0.4)
-st.plotly_chart(fig, use_container_width=True)
-
-# Export buttons
-st.markdown("### 📁 Export Filtered Reports")
-
-excel_buffer = BytesIO()
-df.to_excel(excel_buffer, index=False)
-b64_excel = base64.b64encode(excel_buffer.getvalue()).decode()
-st.markdown(f'<a href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64_excel}" download="filtered_payments.xlsx">📥 Download Excel</a>', unsafe_allow_html=True)
-
-# Full report (for admins only)
-if role in ["hq_admin", "hq_project_director", "super_admin"]:
     st.markdown("---")
-    st.subheader("📤 Download All Reports (Admin Only)")
+    st.subheader("🧾 Export Reports")
 
-    full_df = pd.DataFrame(load_payments())
-    all_buffer = BytesIO()
-    full_df.to_excel(all_buffer, index=False)
-    b64_all = base64.b64encode(all_buffer.getvalue()).decode()
-    st.markdown(f'<a href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64_all}" download="all_payments.xlsx">📥 Download All Payments</a>', unsafe_allow_html=True)
+    # Excel Export
+    excel_buffer = BytesIO()
+    df.to_excel(excel_buffer, index=False, sheet_name="Payments")
+    excel_data = excel_buffer.getvalue()
+    b64_excel = base64.b64encode(excel_data).decode()
+    st.markdown(f'<a href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64_excel}" download="payments.xlsx">📥 Download Excel Report</a>', unsafe_allow_html=True)
+
+    # PDF Export
+    class PDF(FPDF):
+        def header(self):
+            self.set_font("Arial", "B", 12)
+            self.cell(0, 10, "Payment Summary Report", ln=True, align="C")
+
+        def chapter_title(self, title):
+            self.set_font("Arial", "B", 12)
+            self.cell(0, 10, title, ln=True)
+
+        def chapter_body(self, text):
+            self.set_font("Arial", "", 10)
+            self.multi_cell(0, 10, text)
+
+    pdf = PDF()
+    pdf.add_page()
+    pdf.chapter_title("Submitted Payments")
+
+    for i, row in df.iterrows():
+        text = f"Contractor: {row['contractor']}\nAmount: ${row['amount']}\nStatus: {row['status']}\nDescription: {row['description']}\nWork Period: {row['work_period']}\nSubmitted By: {row['submitted_by']}\nDate: {row['submitted_at'].strftime('%Y-%m-%d')}\n"
+        pdf.chapter_body(text + "\n---------------------\n")
+
+    pdf_buffer = BytesIO()
+    pdf.output(pdf_buffer)
+    pdf_data = pdf_buffer.getvalue()
+    b64_pdf = base64.b64encode(pdf_data).decode()
+    st.markdown(f'<a href="data:application/pdf;base64,{b64_pdf}" download="payments_report.pdf">📥 Download PDF Report</a>', unsafe_allow_html=True)
