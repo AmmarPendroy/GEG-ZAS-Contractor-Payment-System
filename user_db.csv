@@ -1,3 +1,3 @@
 email,password,approved,role
-ammar.muhammed@geg-construction.com,$2b$12$...true,super_admin
-bala.kawa@geg-construction.com,$2b$12$HASHED_PASSWORD,true,zas_project_manager
+ammar.muhammed@geg-construction.com,$2b$12$xbF1qbNLW1/7T5Z84nsIjOrwN6pgilWhZUzKq3p/4ESPoC4K2rOiS,true,super_admin
+bala.kawa@geg-construction.com,$2b$12$MyzNkB2i9iZ7XqvPtHgSp.WzYeRJSIaaPSvA0BgYKhYeS8gP2KmSa,true,zas_project_manager
