@@ -1,68 +1,64 @@
 import streamlit as st
 from db import load_payments, save_payments
-from auth import get_current_user, get_all_users
+from auth import get_current_user
 from utils.sidebar import render_sidebar
-import os
+from datetime import datetime
+
+st.set_page_config(page_title="Approval Panel", page_icon="✅")
 
 user = get_current_user()
 if not user:
-    st.warning("Login required.")
+    st.warning("🔒 Login required to view this page.")
     st.stop()
-
-users = get_all_users()
-role = users.get(user, {}).get("role")
 
 render_sidebar()
-st.title("✅ Approval Page")
-
-if role not in ["hq_admin", "hq_project_director"]:
-    st.error("Access denied. Only HQ Admin or HQ Project Director can review payments.")
-    st.stop()
+st.title("✅ HQ Payment Approvals")
+st.caption("Review and process payment requests")
 
 payments = load_payments()
 pending = [p for p in payments if p["status"] == "Pending"]
 
 if not pending:
-    st.info("No pending payments.")
+    st.info("✅ No pending requests at the moment.")
 else:
     for i, p in enumerate(pending):
-        with st.expander(f"{p['contractor']} - ${p['amount']}"):
-            st.write(f"🧾 Submitted by: `{p['submitted_by']}`")
-            st.write(f"📆 Work Period: {p['work_period']}")
-            st.write(f"📝 Description: {p['description']}")
+        with st.expander(f"🧾 {p['contractor']} - ${p['amount']} | Submitted by {p['submitted_by']}"):
+            st.markdown(f"**📅 Work Period:** {p['work_period']}")
+            st.markdown(f"**📝 Description:** {p['description']}")
+            st.markdown(f"**📤 Submitted at:** {p['submitted_at']}")
+            st.markdown("---")
 
-            # Show file attachments
-            if "attachments" in p and p["attachments"]:
-                st.markdown("📎 **Attachments:**")
-                for f in p["attachments"]:
-                    st.markdown(f"- [{os.path.basename(f)}](/{f})", unsafe_allow_html=True)
+            col1, col2, col3 = st.columns([1, 1, 2])
 
-            col1, col2, col3 = st.columns(3)
-
-            if col1.button("✅ Approve", key=f"a_{i}"):
-                p["status"] = "Approve"
+            # Approve button
+            if col1.button("✅ Approve", key=f"approve_{i}"):
+                p["status"] = "Approved"
                 p["reviewed_by"] = user
-                p["comment"] = ""
+                p["reviewed_at"] = datetime.now().isoformat()
                 save_payments(payments)
-                st.success("Approved.")
+                st.success("Payment approved.")
                 st.experimental_rerun()
 
-            if col2.button("❌ Reject", key=f"r_{i}"):
-                p["status"] = "Reject"
+            # Reject button
+            if col2.button("❌ Reject", key=f"reject_{i}"):
+                p["status"] = "Rejected"
                 p["reviewed_by"] = user
-                p["comment"] = ""
+                p["reviewed_at"] = datetime.now().isoformat()
                 save_payments(payments)
-                st.error("Rejected.")
+                st.error("Payment rejected.")
                 st.experimental_rerun()
 
+            # Return with comment
             with col3:
-                with st.form(key=f"return_form_{i}"):
-                    comment = st.text_area("💬 Return with Comment")
-                    submit_return = st.form_submit_button("↩️ Return")
-                    if submit_return:
-                        p["status"] = "Return"
+                return_msg = st.text_input("🔁 Return with comment", key=f"return_{i}")
+                if st.button("Send Back", key=f"return_btn_{i}"):
+                    if return_msg:
+                        p["status"] = "Returned"
                         p["reviewed_by"] = user
-                        p["comment"] = comment
+                        p["reviewed_at"] = datetime.now().isoformat()
+                        p["return_comment"] = return_msg
                         save_payments(payments)
-                        st.warning("Returned with comment.")
+                        st.warning(f"Returned with comment: {return_msg}")
                         st.experimental_rerun()
+                    else:
+                        st.error("Comment is required to return the request.")
