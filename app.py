@@ -1,6 +1,5 @@
 import streamlit as st
 from auth import load_users
-from sidebar import show_sidebar
 
 def show_login():
     st.title("🔐 Login to GEG-ZAS Payment System")
@@ -23,7 +22,7 @@ def main():
         show_login()
         return
 
-    show_sidebar()
+    st.sidebar.success(f"Logged in as {st.session_state['user']}")
     st.switch_page("pages/1_Payment_Request.py")
 
 if __name__ == "__main__":
