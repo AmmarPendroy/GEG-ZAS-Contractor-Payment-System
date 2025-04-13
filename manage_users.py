@@ -29,23 +29,9 @@ def list_users():
 def add_or_update_user():
     email = input("Enter user email: ").strip()
     password = input("Enter password: ").strip()
-    
-    # Add a dropdown for selecting roles
-    roles = [
-        "HQ Project Director", 
-        "HQ Admin", 
-        "HQ Accountant", 
-        "ZAS Project Manager", 
-        "ZAS Accountant"
-    ]
-    print("Select role:")
-    for i, role in enumerate(roles, start=1):
-        print(f"{i}. {role}")
-    role_choice = int(input("Choose the role number: ")) - 1
-    role = roles[role_choice]
-    
+    role = input("Enter role (hq_project_director, hq_admin, hq_accountant, zas_pm, zas_accountant): ").strip()
     approved = input("Approve now? (y/n): ").lower().startswith("y")
-    
+
     users = load_users()
     users[email] = {
         "password": hash_password(password),
