@@ -1,120 +1,125 @@
-import streamlit as st
+import csv
+import hashlib
+import os
 import bcrypt
-import pandas as pd
-from utils.emailer import send_login_alert
+import streamlit as st
 
 USERS_FILE = "user_db.csv"
 
-def load_users():
-    try:
-        return pd.read_csv(USERS_FILE, dtype=str).fillna("")
-    except FileNotFoundError:
-        return pd.DataFrame(columns=["email", "password", "approved", "role"])
-
-def save_users(df):
-    df.to_csv(USERS_FILE, index=False)
-
+# ======================
+# Password Hashing
+# ======================
 def hash_password(password):
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
 def verify_password(plain_password, hashed_password):
     return bcrypt.checkpw(plain_password.encode(), hashed_password.encode())
 
+# ======================
+# User Session Management
+# ======================
 def get_current_user():
     return st.session_state.get("user")
 
 def logout_user():
-    user = get_current_user()
-    if user:
-        send_login_alert(user, success=False)
+    if "user" in st.session_state:
         del st.session_state["user"]
 
-def register_user(email, password, role):
-    df = load_users()
+# ======================
+# CSV Load/Save Helpers
+# ======================
+def get_all_users():
+    try:
+        with open(USERS_FILE, newline="", encoding="utf-8") as f:
+            return list(csv.DictReader(f))
+    except FileNotFoundError:
+        return []
+
+def save_all_users(users):
+    with open(USERS_FILE, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=["email", "password", "role", "approved"])
+        writer.writeheader()
+        writer.writerows(users)
+
+# ======================
+# Core Auth Functions
+# ======================
+def register_user(email, password, role="user"):
     email = email.strip().lower()
-    if email in df["email"].values:
-        return False, "User already exists."
+    users = get_all_users()
+
+    for u in users:
+        if u["email"] == email:
+            return False, "User already exists."
 
     hashed = hash_password(password)
-    new_user = pd.DataFrame([{
+    users.append({
         "email": email,
         "password": hashed,
-        "approved": "false",
-        "role": role
-    }])
-    df = pd.concat([df, new_user], ignore_index=True)
-    save_users(df)
+        "role": role,
+        "approved": "False"
+    })
+
+    save_all_users(users)
     return True, "Registration successful. Awaiting approval."
 
 def login_user(email, password):
-    df = load_users()
     email = email.strip().lower()
+    users = get_all_users()
 
-    user_row = df[df["email"] == email]
-    if user_row.empty:
-        return False, "Email not found."
+    for row in users:
+        if row["email"] == email:
+            if row["approved"].lower() != "true":
+                return False, "Account not approved yet."
 
-    row = user_row.iloc[0]
-    if row["approved"].lower() != "true":
-        return False, "Account not approved yet."
+            if verify_password(password, row["password"]):
+                st.session_state["user"] = email
+                return True, "Login successful."
+            else:
+                return False, "Incorrect password."
 
-    if not verify_password(password, row["password"]):
-        return False, "Incorrect password."
-
-    st.session_state["user"] = email
-    send_login_alert(email, success=True)
-    return True, "Login successful."
+    return False, "Email not found."
 
 def change_password(email, old_password, new_password):
-    df = load_users()
     email = email.strip().lower()
-    user_row = df[df["email"] == email]
-    if user_row.empty:
-        return False, "Email not found."
+    users = get_all_users()
+    updated = False
 
-    idx = user_row.index[0]
-    if not verify_password(old_password, df.at[idx, "password"]):
-        return False, "Old password incorrect."
+    for row in users:
+        if row["email"] == email:
+            if not verify_password(old_password, row["password"]):
+                return False, "Old password is incorrect."
+            row["password"] = hash_password(new_password)
+            updated = True
+            break
 
-    df.at[idx, "password"] = hash_password(new_password)
-    save_users(df)
-    return True, "Password updated successfully."
+    if updated:
+        save_all_users(users)
+        return True, "Password changed successfully."
+    return False, "User not found."
 
-def get_all_users():
-    return load_users().to_dict(orient="records")
-
+# ======================
+# Admin Actions
+# ======================
 def approve_user(email):
-    df = load_users()
-    current_user = get_current_user()
-    if current_user is None:
-        return False, "Not logged in."
-
-    approver = df[df["email"] == current_user]
-    if approver.empty:
-        return False, "Invalid user session."
-
-    role = approver.iloc[0]["role"]
-    if role not in ["hq_admin", "hq_project_director", "super_admin"]:
-        return False, "Not authorized."
-
-    idx = df[df["email"] == email].index
-    if idx.empty:
-        return False, "User not found."
-
-    df.at[idx[0], "approved"] = "true"
-    save_users(df)
-    return True, "User approved."
+    email = email.strip().lower()
+    users = get_all_users()
+    found = False
+    for row in users:
+        if row["email"] == email:
+            row["approved"] = "True"
+            found = True
+            break
+    if found:
+        save_all_users(users)
+        return True, "User approved."
+    return False, "User not found."
 
 def reject_user(email):
-    df = load_users()
-    current_user = get_current_user()
-    if current_user is None:
-        return False, "Not logged in."
-
-    role = df[df["email"] == current_user].iloc[0]["role"]
-    if role not in ["hq_admin", "hq_project_director", "super_admin"]:
-        return False, "Not authorized."
-
-    df = df[df["email"] != email]
-    save_users(df)
-    return True, "User rejected or deleted."
+    email = email.strip().lower()
+    users = get_all_users()
+    filtered = [u for u in users if u["email"] != email]
+    if len(filtered) == len(users):
+        return False, "User not found."
+    save_all_users(filtered)
+    return True, "User rejected/deleted."
