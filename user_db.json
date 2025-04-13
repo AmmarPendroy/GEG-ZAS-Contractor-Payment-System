@@ -1,10 +1,12 @@
 {
-  "ammar.muhammed@geg-construction.com": {
-    "name": "Ammar Muhammed",
-    "approved": true
-  },
   "user@example.com": {
-    "name": "Test User",
-    "approved": false
+    "password": "hashed_password_here",
+    "approved": true,
+    "role": "user"
+  },
+  "admin@example.com": {
+    "password": "hashed_password_here",
+    "approved": true,
+    "role": "admin"
   }
 }
