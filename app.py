@@ -28,10 +28,10 @@ def main():
 
         role = st.selectbox("Select your role", [
             "HQ - Project Director",
-            "hq_admin",
-            "hq_accountant",
-            "zas_pm",
-            "zas_accountant"
+            "HQ - Admin",
+            "HQ - Accountantt",
+            "ZAS - Project Manager",
+            "ZAS - Accountant"
         ], key="register_role")
 
         if st.button("Register"):
