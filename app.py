@@ -1,65 +1,45 @@
 import streamlit as st
-import json
-import hashlib
-from auth import load_users, save_users
-
-def hash_password(password):
-    return hashlib.sha256(password.encode()).hexdigest()
-
-def show_login():
-    st.subheader("🔐 Login to GEG-ZAS Payment System")
-    email = st.text_input("Email")
-    password = st.text_input("Password", type="password")
-
-    if st.button("Login"):
-        users = load_users()
-        if email in users:
-            if not users[email].get("approved"):
-                st.error("Your account is not approved yet.")
-                return
-            if users[email]["password"] == hash_password(password):
-                st.session_state["user"] = email
-                st.success("Login successful!")
-                st.rerun()
-            else:
-                st.error("Incorrect password.")
-        else:
-            st.error("Email not found.")
-
-def show_register():
-    st.subheader("📝 Register New Account")
-    email = st.text_input("New Email")
-    password = st.text_input("Create Password", type="password")
-
-    if st.button("Register"):
-        users = load_users()
-        if email in users:
-            st.warning("This email is already registered.")
-            return
-
-        users[email] = {
-            "password": hash_password(password),
-            "approved": False,
-            "role": "user"
-        }
-        save_users(users)
-        st.success("Registration successful. Awaiting admin approval.")
+from auth import login_user, register_user, change_password, get_current_user
 
 def main():
-    if "user" not in st.session_state:
-        tab = st.sidebar.radio("Select", ["Login", "Register"])
-        if tab == "Login":
-            show_login()
-        else:
-            show_register()
-        return
+    if "user" in st.session_state:
+        st.switch_page("pages/1_Payment_Request.py")
 
-    st.sidebar.success(f"Logged in as {st.session_state['user']}")
-    if st.sidebar.button("Logout"):
-        del st.session_state["user"]
-        st.rerun()
+    st.title("🔐 GEG-ZAS Login/Register")
 
-    st.switch_page("pages/1_Payment_Request.py")
+    tab1, tab2, tab3 = st.tabs(["Login", "Register", "Change Password"])
+
+    with tab1:
+        email = st.text_input("Email", key="login_email")
+        password = st.text_input("Password", type="password", key="login_pass")
+        if st.button("Login"):
+            success, msg = login_user(email, password)
+            if success:
+                st.success(msg)
+                st.rerun()
+            else:
+                st.error(msg)
+
+    with tab2:
+        new_email = st.text_input("Email", key="register_email")
+        new_pass = st.text_input("Password", type="password", key="register_pass")
+        if st.button("Register"):
+            success, msg = register_user(new_email, new_pass)
+            if success:
+                st.success(msg)
+            else:
+                st.error(msg)
+
+    with tab3:
+        email_cp = st.text_input("Your Email", key="cp_email")
+        old_pass = st.text_input("Old Password", type="password", key="cp_old")
+        new_pass = st.text_input("New Password", type="password", key="cp_new")
+        if st.button("Change Password"):
+            success, msg = change_password(email_cp, old_pass, new_pass)
+            if success:
+                st.success(msg)
+            else:
+                st.error(msg)
 
 if __name__ == "__main__":
     main()
