@@ -22,7 +22,7 @@ repo = g.get_repo("AmmarPendroy/GEG-ZAS-Contractor-Payment-System")
 # Streamlit title
 st.title("📊 GEG ZAS Contractor Payment System")
 
-# Example of fetching issues or data from the repo
+# Example of fetching issues or data from the repo (optional)
 issues = repo.get_issues(state='open')
 st.write("### Open Issues in the Repository:")
 for issue in issues:
