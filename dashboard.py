@@ -1,70 +1,65 @@
 import streamlit as st
-from db import load_payments
+import json
 import pandas as pd
-from utils.emailer import send_email
-from datetime import datetime
+import plotly.express as px
+from utils.sidebar import load_sidebar
 
-def dashboard():
-    st.title("📊 Dashboard")
+# Load sidebar
+load_sidebar()
 
-    payments = load_payments()
-    df = pd.DataFrame(payments)
+st.title("📊 Contractor Payment Dashboard")
 
-    if df.empty:
-        st.info("No data yet.")
-    else:
-        df["submitted_at"] = pd.to_datetime(df["submitted_at"])
-        df["week"] = df["submitted_at"].dt.strftime("%Y-W%U")
-        df["month"] = df["submitted_at"].dt.strftime("%B")
+# Load payment data
+def load_data():
+    try:
+        with open("payments.json", "r") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return []
 
-        summary = df.groupby("contractor").agg({
-            "amount": ["sum"],
-            "week": lambda x: df.loc[x.index].groupby("week")["amount"].sum().max(),
-            "month": lambda x: df.loc[x.index].groupby("month")["amount"].sum().max()
-        })
+payments = load_data()
+df = pd.DataFrame(payments)
 
-        st.dataframe(summary)
+# Check if there's any data
+if df.empty:
+    st.info("No payment records found.")
+    st.stop()
 
-        st.markdown("### Status Summary")
-        st.write(f"🕒 Pending: {len(df[df['status'] == 'Pending'])}")
-        st.write(f"✅ Approved: {len(df[df['status'] == 'Approve'])}")
-        st.write(f"❌ Rejected/Returned: {len(df[df['status'].isin(['Reject', 'Return'])])}")
+# Convert status to lowercase for consistency
+df["status"] = df["status"].str.lower()
 
-        st.markdown("---")
-        st.subheader("🧾 Export Reports")
+# Filter section
+with st.sidebar:
+    st.header("🔍 Filters")
+    contractors = sorted(df["contractor"].unique())
+    selected_contractor = st.selectbox("Select Contractor", ["All"] + contractors)
 
-        # Excel Export
-        excel_buffer = BytesIO()
-        df.to_excel(excel_buffer, index=False, sheet_name="Payments")
-        excel_data = excel_buffer.getvalue()
-        b64_excel = base64.b64encode(excel_data).decode()
-        st.markdown(f'<a href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64_excel}" download="payments.xlsx">📥 Download Excel Report</a>', unsafe_allow_html=True)
+    status_filter = st.multiselect("Filter by Status", options=df["status"].unique(), default=df["status"].unique())
 
-        # PDF Export
-        class PDF(FPDF):
-            def header(self):
-                self.set_font("Arial", "B", 12)
-                self.cell(0, 10, "Payment Summary Report", ln=True, align="C")
+# Apply filters
+filtered_df = df.copy()
 
-            def chapter_title(self, title):
-                self.set_font("Arial", "B", 12)
-                self.cell(0, 10, title, ln=True)
+if selected_contractor != "All":
+    filtered_df = filtered_df[filtered_df["contractor"] == selected_contractor]
 
-            def chapter_body(self, text):
-                self.set_font("Arial", "", 10)
-                self.multi_cell(0, 10, text)
+if status_filter:
+    filtered_df = filtered_df[filtered_df["status"].isin(status_filter)]
 
-        pdf = PDF()
-        pdf.add_page()
-        pdf.chapter_title("Submitted Payments")
+# Summary stats
+st.subheader("📌 Summary")
+col1, col2, col3 = st.columns(3)
+col1.metric("Total Requests", len(filtered_df))
+col2.metric("Approved", (df["status"] == "approved").sum())
+col3.metric("Pending", (df["status"] == "pending").sum())
 
-        for i, row in df.iterrows():
-            text = f"Contractor: {row['contractor']}\nAmount: ${row['amount']}\nStatus: {row['status']}\nDescription: {row['description']}\nWork Period: {row['work_period']}\nSubmitted By: {row['submitted_by']}\nDate: {row['submitted_at'].strftime('%Y-%m-%d')}\n"
-            pdf.chapter_body(text + "\n---------------------\n")
+# Chart
+st.subheader("📈 Payment Status Distribution")
+status_counts = filtered_df["status"].value_counts().reset_index()
+status_counts.columns = ["Status", "Count"]
 
-        pdf_buffer = BytesIO()
-        pdf.output(pdf_buffer)
-        pdf_data = pdf_buffer.getvalue()
-        b64_pdf = base64.b64encode(pdf_data).decode()
-        st.markdown(f'<a href="data:application/pdf;base64,{b64_pdf}" download="payments_report.pdf">📥 Download PDF Report</a>', unsafe_allow_html=True)
+fig = px.pie(status_counts, names="Status", values="Count", title="Status Breakdown", hole=0.4)
+st.plotly_chart(fig, use_container_width=True)
 
+# Raw data
+st.subheader("📋 Payment Records")
+st.dataframe(filtered_df, use_container_width=True)
