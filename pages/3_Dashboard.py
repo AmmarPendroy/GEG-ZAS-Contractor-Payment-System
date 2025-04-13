@@ -1,142 +1,105 @@
 import streamlit as st
 import pandas as pd
+import plotly.express as px
 from db import load_payments
 from auth import get_current_user, get_all_users
 from datetime import datetime
 from io import BytesIO
 import base64
 from fpdf import FPDF
-import plotly.express as px
 from utils.sidebar import render_sidebar
-import os
 
-# Function to log exports
-def log_export(user, role, filetype, contractor_filter, date_range):
-    log_file = "export_logs.csv"
-    timestamp = datetime.utcnow().isoformat()
-    entry = {
-        "timestamp": timestamp,
-        "user": user,
-        "role": role,
-        "file_type": filetype,
-        "contractor_filter": contractor_filter,
-        "date_range": f"{date_range[0]} to {date_range[1]}" if len(date_range) == 2 else ""
-    }
+st.set_page_config(page_title="Dashboard", page_icon="📊")
 
-    try:
-        df = pd.read_csv(log_file)
-    except FileNotFoundError:
-        df = pd.DataFrame(columns=["timestamp", "user", "role", "file_type", "contractor_filter", "date_range"])
-
-    df = pd.concat([df, pd.DataFrame([entry])], ignore_index=True)
-    df.to_csv(log_file, index=False)
-
-# Auth check
 user = get_current_user()
 if not user:
-    st.warning("Login required.")
+    st.warning("🔒 Login required.")
     st.stop()
 
 render_sidebar()
-st.title("📊 Dashboard")
+st.title("📊 Payment Dashboard")
 
-# Load role
-users = get_all_users()
-user_data = next((u for u in users if u["email"] == user), None)
-role = user_data["role"] if user_data else "unknown"
+# Load payments and users
+df = pd.DataFrame(load_payments())
+users = {u["email"]: u for u in get_all_users()}
+role = users.get(user, {}).get("role", "")
 
-# Load data
-payments = load_payments()
-df = pd.DataFrame(payments)
-
+# Guard: no data
 if df.empty:
-    st.info("No data available.")
+    st.info("No payment data available yet.")
     st.stop()
 
+# Format timestamps
 df["submitted_at"] = pd.to_datetime(df["submitted_at"])
-df["month"] = df["submitted_at"].dt.strftime("%Y-%m")
 df["week"] = df["submitted_at"].dt.strftime("%Y-W%U")
+df["month"] = df["submitted_at"].dt.strftime("%B %Y")
 
-if role.startswith("zas_"):
+# Role-based filtering
+if not role.startswith("hq_") and not role == "super_admin":
     df = df[df["submitted_by"] == user]
 
 # Sidebar filters
-st.sidebar.subheader("🔎 Filter Payments")
-contractors = sorted(df["contractor"].unique())
-selected_contractor = st.sidebar.selectbox("Contractor", ["All"] + contractors)
-date_range = st.sidebar.date_input("Date Range", [])
+with st.sidebar:
+    st.header("🔍 Filters")
+    contractor = st.selectbox("🏗️ Contractor", ["All"] + sorted(df["contractor"].unique()))
+    status_filter = st.multiselect("📌 Status", options=df["status"].unique(), default=df["status"].unique())
+    date_range = st.date_input("📅 Submission Date Range", [])
 
-if selected_contractor != "All":
-    df = df[df["contractor"] == selected_contractor]
+# Apply filters
+if contractor != "All":
+    df = df[df["contractor"] == contractor]
+if status_filter:
+    df = df[df["status"].isin(status_filter)]
+if len(date_range) == 2:
+    start, end = pd.to_datetime(date_range)
+    df = df[(df["submitted_at"] >= start) & (df["submitted_at"] <= end)]
 
-if date_range and len(date_range) == 2:
-    start_date, end_date = date_range
-    df = df[(df["submitted_at"] >= pd.to_datetime(start_date)) & (df["submitted_at"] <= pd.to_datetime(end_date))]
+# Metrics summary
+st.subheader("📌 Summary")
+col1, col2, col3 = st.columns(3)
+col1.metric("🧾 Total Requests", len(df))
+col2.metric("✅ Approved", len(df[df["status"] == "Approved"]))
+col3.metric("🕒 Pending", len(df[df["status"] == "Pending"]))
 
-# New entry notification
-if "last_check" not in st.session_state:
-    st.session_state["last_check"] = datetime.now()
-else:
-    new_entries = df[df["submitted_at"] > st.session_state["last_check"]]
-    if not new_entries.empty:
-        st.success(f"🔔 {len(new_entries)} new payment(s) since your last visit.")
-    st.session_state["last_check"] = datetime.now()
+# Chart
+st.subheader("📈 Payment Status Breakdown")
+chart_data = df["status"].value_counts().reset_index()
+chart_data.columns = ["Status", "Count"]
+fig = px.pie(chart_data, names="Status", values="Count", hole=0.4)
+st.plotly_chart(fig, use_container_width=True)
 
-# Charts
-st.subheader("📌 Monthly Total per Contractor")
-monthly_summary = df.groupby(["month", "contractor"])["amount"].sum().reset_index()
-fig1 = px.bar(monthly_summary, x="month", y="amount", color="contractor", barmode="group")
-st.plotly_chart(fig1, use_container_width=True)
-
-st.subheader("📌 Status Distribution")
-fig2 = px.pie(df, names="status", title="Payment Status Distribution", hole=0.4)
-st.plotly_chart(fig2, use_container_width=True)
-
-# Summary table
-st.subheader("📋 Summary Table")
-summary = df.groupby("contractor").agg({
-    "amount": "sum",
-    "status": "count"
-}).rename(columns={"status": "requests"})
-st.dataframe(summary)
-
-# Export
-st.markdown("### 🧾 Export Filtered Reports")
+# Export section
+st.markdown("### 📁 Export Reports")
 
 excel_buffer = BytesIO()
 df.to_excel(excel_buffer, index=False)
-excel_data = excel_buffer.getvalue()
-b64_excel = base64.b64encode(excel_data).decode()
+b64_excel = base64.b64encode(excel_buffer.getvalue()).decode()
 st.markdown(f'<a href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64_excel}" download="payments.xlsx">📥 Download Excel</a>', unsafe_allow_html=True)
-log_export(user, role, "Excel", selected_contractor, date_range)
 
 class PDF(FPDF):
     def header(self):
         self.set_font("Arial", "B", 12)
         self.cell(0, 10, "Payment Summary Report", ln=True, align="C")
-
     def chapter_body(self, text):
         self.set_font("Arial", "", 10)
         self.multi_cell(0, 10, text)
 
 pdf = PDF()
 pdf.add_page()
+pdf.set_auto_page_break(auto=True, margin=15)
+
 for _, row in df.iterrows():
-    body = (
+    txt = (
         f"Contractor: {row['contractor']}\n"
         f"Amount: ${row['amount']}\n"
         f"Status: {row['status']}\n"
-        f"Description: {row['description']}\n"
-        f"Work Period: {row['work_period']}\n"
-        f"Submitted By: {row['submitted_by']}\n"
-        f"Date: {row['submitted_at'].strftime('%Y-%m-%d')}\n"
-        "-------------------------\n"
+        f"Submitted by: {row['submitted_by']}\n"
+        f"Period: {row['work_period']}\n"
+        f"Date: {row['submitted_at'].strftime('%Y-%m-%d')}\n\n"
     )
-    pdf.chapter_body(body)
+    pdf.chapter_body(txt)
 
 pdf_buffer = BytesIO()
 pdf.output(pdf_buffer)
-pdf_data = pdf_buffer.getvalue()
-b64_pdf = base64.b64encode(pdf_data).decode()
+b64_pdf = base64.b64encode(pdf_buffer.getvalue()).decode()
 st.markdown(f'<a href="data:application/pdf;base64,{b64_pdf}" download="payments.pdf">📥 Download PDF</a>', unsafe_allow_html=True)
-log_export(user, role, "PDF", selected_contractor, date_range)
