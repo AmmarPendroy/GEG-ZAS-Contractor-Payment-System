@@ -7,7 +7,7 @@ from utils.emailer import send_email
 USER_DB_FILE = "user_db.json"
 SESSION_KEY = "current_user"
 
-HQ_ADMIN_EMAIL = "ammar.muhammed@geg-construction.com"  # Automatically approved
+HQ_ADMIN_EMAIL = "ammar.muhammed@geg-construction.com"  # Auto-approved HQ admin
 
 # --- Helper functions ---
 
@@ -49,19 +49,26 @@ def login():
             remember = st.checkbox("Remember me")
 
             if st.button("Login"):
+                # Auto-approve HQ Admin
                 if email == HQ_ADMIN_EMAIL:
                     st.session_state[SESSION_KEY] = {"email": email, "role": "hq_admin"}
-                    st.experimental_rerun()  # Skip further checks for HQ Admin
+                    if remember:
+                        st.session_state["remembered_user"] = st.session_state[SESSION_KEY]
+                    st.experimental_rerun()
+
                 elif email not in users:
                     st.error("Email not found.")
                     return
+
                 user = users[email]
                 if hash_password(password) != user["password"]:
                     st.error("Incorrect password.")
                     return
+
                 if not user.get("approved", False):
                     st.warning("Account pending approval by HQ.")
                     return
+
                 st.session_state[SESSION_KEY] = {"email": email, "role": user["role"]}
                 if remember:
                     st.session_state["remembered_user"] = st.session_state[SESSION_KEY]
@@ -76,9 +83,11 @@ def login():
                 if not email.endswith("@geg-construction.com"):
                     st.error("Email must be from @geg-construction.com domain.")
                     return
+
                 if email in users:
                     st.error("Email already registered.")
                     return
+
                 users[email] = {
                     "password": hash_password(password),
                     "role": role,
@@ -88,9 +97,9 @@ def login():
                 st.success("Registered. Awaiting approval by HQ.")
 
         elif tab == "Reset Password":
-            email = st.text_input("Enter your email for reset")
+            email = st.text_input("Enter your email")
             new_pass = st.text_input("New password", type="password")
-            confirm_pass = st.text_input("Confirm new password", type="password")
+            confirm_pass = st.text_input("Confirm password", type="password")
 
             if st.button("Reset Password"):
                 if email not in users:
@@ -99,18 +108,22 @@ def login():
                 if new_pass != confirm_pass:
                     st.error("Passwords do not match.")
                     return
+
                 users[email]["password"] = hash_password(new_pass)
                 save_users(users)
+
                 send_email(
                     to=email,
                     subject="🔒 Password Reset - GEG-ZAS System",
-                    body="Your password has been reset successfully. You can now log in with your new password."
+                    body="Your password has been reset successfully."
                 )
-                st.success("Password reset successfully.")
+                st.success("Password reset. You can now log in.")
 
     # Restore session from "Remember me"
     if "remembered_user" in st.session_state and SESSION_KEY not in st.session_state:
         st.session_state[SESSION_KEY] = st.session_state["remembered_user"]
+
+# --- Admin Tools ---
 
 def get_all_users():
     return load_users()
@@ -126,4 +139,3 @@ def reject_user(email):
     if email in users:
         del users[email]
         save_users(users)
-
