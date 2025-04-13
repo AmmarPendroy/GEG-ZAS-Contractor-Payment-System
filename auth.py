@@ -57,3 +57,27 @@ def change_password(email, old_password, new_password):
     users[email]["password"] = hash_password(new_password)
     save_users(users)
     return True, "Password updated successfully."
+
+# Additional Functions
+
+def get_all_users():
+    """Returns all users in the system"""
+    return load_users()
+
+def approve_user(email):
+    """Approves a user by setting their 'approved' field to True"""
+    users = load_users()
+    if email not in users:
+        return False, "User not found."
+    users[email]["approved"] = True
+    save_users(users)
+    return True, "User approved."
+
+def reject_user(email):
+    """Rejects a user by setting their 'approved' field to False"""
+    users = load_users()
+    if email not in users:
+        return False, "User not found."
+    users[email]["approved"] = False
+    save_users(users)
+    return True, "User rejected."
